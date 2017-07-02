@@ -1,0 +1,51 @@
+HUC8,CatalogingUnitDescription,Station,StationDescription,CBSeg2003,FallLine,Latitude,Longitude,LLDatum
+2050306,Lower Susquehanna,CB1.1,Mouth Of Susquehanna River; Head Of Bay; Mid-Channel,CB1TF ,B,39.54794,-76.08481,NAD83 
+2060001,Upper Chesapeake Bay,CB2.1,Southwest Of Turkey Point; Upper Limit Of Transition Zone; Mid-Channel,CB1TF ,B,39.44149,-76.02599,NAD83 
+2060001,Upper Chesapeake Bay,CB2.2,West Of Still Pond Near Buoy R-34; Middle Of Transition Zone; Mid-Channel,CB2OH ,B,39.34873,-76.17579,NAD83 
+2060001,Upper Chesapeake Bay,CB3.3C,North Of Bay Bridge; Characterizes Mid-Channel,CB3MH ,B,38.99596,-76.35967,NAD83 
+2060001,Upper Chesapeake Bay,CB4.3C,East Of Dares Beach Near Buoy R-64; Characterizes Mid-Channel,CB4MH ,B,38.55505,-76.42794,NAD83 
+2060001,Upper Chesapeake Bay,CB5.2,East Of Point No Point; Mid-Channel,CB5MH ,B,38.13705,-76.22787,NAD83 
+2080101,Lower Chesapeake Bay,CB6.1,(Tidal) Lower West Central Chesapeake Bay (Main Channel Off Lower End Of The Rappahannock River),CB6PH ,B,37.58847,-76.16216,NAD83 
+2080101,Lower Chesapeake Bay,CB6.4,(Tidal) Central Chesapeake Bay Offshore From Mouth Of York River,CB6PH ,B,37.23653,-76.20799,NAD83 
+2080101,Lower Chesapeake Bay,CB7.3E,(Tidal) Lower Eastern Shore Channel Area,CB7PH ,B,37.22875,-76.05383,NAD83 
+2080101,Lower Chesapeake Bay,CB7.4,(Tidal) Baltimore Channel At The Bay Bridge/Tunnel,CB8PH ,B,36.9957,-76.02048,NAD83 
+2060002,Chester-Sassafras,EE1.1,Eastern Bay Between Tilghman Point And Parsons Island; North Of Buoy R-4; Characterizes Embayment,EASMH ,B,38.88,-76.2515,NAD83 
+2080110,Eastern Lower Delmarva,EE3.1,North Tangier Sound; Northwest Of Haines Point; 100 Yards North Of Buoy R-16; Characterizes Embayment,TANMH ,B,38.19685,-75.97321,NAD83 
+2080110,Eastern Lower Delmarva,EE3.2,South Tangier Sound; 1 Nautical Mile N Of James Island Light On A Line From Buoy R-8 To Bell 9 In 27 Meters; Characterizes Embayment,TANMH ,B,37.98139,-75.92423,NAD83 
+2080111,Pocomoke-Western Lower Delmarva,EE3.3,"Pocomoke Sound; Mid-Channel Near Buoy W-a"" Place; State Line; Characterizes Embayment""",POCMH ,B,37.91455,-75.80148,NAD83 
+2060002,Chester-Sassafras,ET3.1,Sassafras River Near Route 213 Bridge; Tidal Fresh Water Station,SASOH ,B,39.36415,-75.88203,NAD83 
+2060002,Chester-Sassafras,ET4.2,Lower Chester River; South Of Eastern Neck Island At Buoy Fig-9; Characterizes Lower Estuarine,CHSMH ,B,38.99233,-76.2151,NAD83 
+2080109,Western Lower Delmarva,ET5.0A,"Choptank River, Mid-Channel Of Mouth Of Kings Cree",NGISS ,B,38.46522,-75.58095,NAD83 
+2060005,Choptank,ET5.1,Upper Choptank River At Ganey Wharf; Downstream Of Confluence; Tuckahoe Circle; Tidal Fresh Water Station,CHOOH ,B,38.80645,-75.90971,NAD83 
+2060005,Choptank,ET5.2,Lower Choptank River Near Route 50 Bridge At Cambridge; Characterizes Lower Estuarine,CHOMH2,B,38.5807,-76.0587,NAD83 
+2080109,Western Lower Delmarva,ET6.1,Upper Nanticoke River Near Route 313 Bridge At Sharptown; Mid-Channel; Tidal Fresh Water Station,NGISS ,B,38.54833,-75.70306,NAD83 
+2080110,Eastern Lower Delmarva,ET7.1,Lower Wicomico River At Whiteheaven Off Of Ferry Road; Characterizes Lower Estuarine,WICMH ,B,38.26783,-75.78793,NAD83 
+2060006,Patuxent,LE1.1,Mid-Channel; Ssw Of Jack Bay Sandspit And Northeast Of Sandgates; Characterizes Lower Estuarine,PAXMH ,B,38.42535,-76.60176,NAD83 
+2070011,Lower Potomac,LE2.2,Potomac River Off Ragged Point At Buoy 51b; Lower Estuarine Zone,POTMH ,B,38.1576,-76.598,NAD83 
+2080101,Lower Chesapeake Bay,LE3.6,(Tidal) Mouth Of The Rappahannock River,RPPMH ,B,37.5968,-76.28467,NAD83 
+2080101,Lower Chesapeake Bay,LE5.5,(Tidal) Mouth Of The James River; Original Location 6/84 -8/30/96,JMSPH ,B,36.99681,-76.303,NAD83 
+2080208,Hampton Roads,LE5.5-W,(Tidal) Mouth Of The James River; Monitoring Began 9/96 1000 Yards West Of Le5.5,JMSPH ,B,36.99903,-76.31328,NAD83 
+2070011,Lower Potomac,MAT0016,Mattawoman Creek At Black Day Beacon 1; Characterizes Tidal Fresh Zone,MATTF ,B,38.56508,-77.19345,NAD83 
+2070011,Lower Potomac,RET2.2,Bouy 19 Mid-Channel Off Maryland Point; Characterizes Transition Zone,POTOH ,B,38.3525,-77.2051,NAD83 
+2080104,Lower Rappahannock,RET3.1,(Tidal) Rappahannock River North Of Buoy R10; Vims Slack,RPPMH ,B,37.9173,-76.8222,NAD83 
+2080106,Pamunkey,RET4.1,(Tidal) Pamunkey River At Southern End Of Lee Marsh,PMKOH ,B,37.52564,-76.86761,NAD83 
+2080107,York,RET4.3,(Tidal) York River (Vims Slack Water #c57),YRKMH ,B,37.50869,-76.78889,NAD83 
+2080206,Lower James,RET5.2,(Tidal) Swann's Point; James River Wqmp Sta#19,JMSOH ,B,37.20294,-76.78219,NAD83 
+2080208,Hampton Roads,SBE2,(Tidal) Southern Branch  Elizabeth River; Adjacent To Atlantic Wood,SBEMH ,B,36.8134,-76.2903,NAD83 
+2080208,Hampton Roads,SBE5,(Tidal) Southern Branch  Elizabeth River; Adjacent To Virginia Power,SBEMH ,B,36.76987,-76.29605,NAD83 
+2060006,Patuxent,TF1.5,Mid-Channel At Nottingham; Characterizes Tidal Fresh Zone,PAXTF ,B,38.71012,-76.70146,NAD83 
+2060006,Patuxent,TF1.6,Mid-Channel Off Wharf At Lower Marlboro; Characterizes Transition Zone,PAXOH ,B,38.65845,-76.68381,NAD83 
+2060006,Patuxent,TF1.7,Mid-Channel On A Transsect Of Approximate 115 Degree From Jack's Creek; Characterizes Transition Zone,PAXOH ,B,38.58211,-76.68101,NAD83 
+2070010,Middle Potomac-Anacostia-Occoquan,TF2.3,Bouy N 54 Mid-Channel Off Indianhead; Characterizes Tidal Fresh Zone,POTTF ,B,38.6082,-77.1739,NAD83 
+2070011,Lower Potomac,TF2.4,Bouy 44 Between Possum Point And Moss Point; Characterizes Tidal Fresh/Transition Zone,POTTF ,B,38.5301,-77.2654,NAD83 
+2080104,Lower Rappahannock,TF3.3,(Tidal) Rappahannock River At Jones Creek? (Vims Slack Water #n40),RPPOH ,B,38.01847,-76.90928,NAD83 
+2080106,Pamunkey,TF4.2,(Tidal) Pamunkey River At White House; Va,PMKTF ,B,37.57999,-77.02128,NAD83 
+2080206,Lower James,TF5.5,(Tidal) James River At Red Buoy #107 (Jrwqmp Station #13); See Comment,JMSTF ,B,37.31265,-77.23283,NAD83 
+2080107,York,WE4.2,(Tidal) Mouth Of The York River; Mid-Channel,MOBPH ,B,37.24181,-76.38634,NAD83 
+2060003,Gunpowder-Patapsco,WT5.1,Patapsco River; East Of Hawkins Point At Buoy 5m; Characterizes Lower Estuarine,PATMH ,B,39.21309,-76.52254,NAD83 
+2060004,Severn,WT6.1,Magothy River; North Of South Ferry Point At Buoy Fl R12; Characterizes Lower Estuarine,MAGMH ,B,39.07851,-76.51005,NAD83 
+2060004,Severn,WT8.1,"South River; South Of Poplar Point At Day Marker R-16""; Characterizes Lower Estuarine""",SOUMH ,B,38.9496,-76.5461,NAD83 
+2080110,Eastern Lower Delmarva,XCI4078,Island Point In Channel At Buoy Fl 14 Characterizes Lower Estuarine,WICMH ,B,38.23379,-75.86963,NAD83 
+2080109,Western Lower Delmarva,XDJ9007,Site Of Old Rt 50 Bridge At Vienna (Bridge No Longer Exists) Characterizes Tidal Fresh,NANOH ,B,38.48375,-75.82098,NAD83 
+,,,,,,,,
+Total_Records: 48,,,,,,,,
