@@ -1,0 +1,37 @@
+---
+title: "Metric Calculation"
+output: html_notebook
+---
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate)
+```
+
+```{r}
+library(mmir)
+```
+
+
+
+```{r}
+hier.vec <- c("kingdom", "subkingdom", "infrakingdom", 
+              "superdivision", "division", "subdivision", "infradivision",
+              "superphylum", "phylum", "subphylum", "infraphylum", 
+              "superclass", "class", "subclass", "infraclass", 
+              "superorder", "order", "suborder", "infraorder", 
+              "section_animalia", "subsection_animalia", 
+              "superfamily", "family", "subfamily", 
+              "tribe", "subtribe", 
+              "genus", "subgenus", 
+              "section_botany", "subsection_botany",
+              "species", "subspecies", 
+              "variety", "form", "race", "stirp", "morph", "aberration", "unspecified")
+hier.vec <- hier.vec[hier.vec %in% names(bay.df)]
+```
+
+```{r}
+seq.df <- Benthos::seq_taxa(fish.long, site, count, hier.vec, job = "pct") %>% 
+  dplyr::bind_cols(Benthos::seq_taxa(fish.long, site, count, hier.vec, job = "abund")) %>% 
+  dplyr::bind_cols(Benthos::seq_taxa(fish.long, site, count, hier.vec[!hier.vec %in% "species"],
+                     high.taxa.col = "species", job = "rich"))
+```
+

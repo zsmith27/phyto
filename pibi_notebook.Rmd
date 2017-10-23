@@ -1,0 +1,43 @@
+---
+title: "PIBI"
+author: "Zachary M. Smith"
+date: "9-19-17"
+output:
+  html_notebook:
+    collapsed: no
+    number_sections: no
+    smooth_scroll: no
+    theme: spacelab
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+  word_document: default
+---
+
+```{r, echo=FALSE}
+evaluate <- FALSE
+```
+
+## Introduction
+```{r child = 'intro.Rmd', eval=TRUE}
+
+```
+
+## Prepare Taxonomic Hierarchy
+```{r child = 'prep_hierarchy.Rmd', eval=TRUE}
+
+```
+
+## Prepare Carbon Assignments
+```{r child = 'prep_carbon.Rmd', eval=TRUE}
+
+```
+
+
+## Metric Calculation
+```{r child = 'metric_calc.Rmd', eval=TRUE}
+
+```

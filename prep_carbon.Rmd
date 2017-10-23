@@ -1,0 +1,55 @@
+---
+title: "Prepare Carbon Assignments"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate)
+```
+
+```{r}
+carbon.df <- readxl::read_excel("data/carbon_list_2014.xlsx",
+                                sheet = "carbon_list_2014") %>% 
+  clean_up() %>% 
+  rename(final_id = lbl) %>% 
+  select(final_id, size, tsn, old_carbon) %>%
+  distinct()
+```
+
+```{r}
+size.carbon <- carbon.df %>% 
+  select(size) %>% 
+  distinct() %>% 
+  arrange(size)
+
+size.bay <- bay.df %>% 
+  select(size) %>% 
+  distinct() %>% 
+  arrange(size)
+
+size.df <- bind_rows(size.carbon, size.bay) %>% 
+  distinct() %>% 
+  arrange(size)
+
+data.table::fwrite(size.df, "size_codes.csv")
+
+```
+
+
+```{r}
+bay.test <- bay.df %>% 
+  mutate(final_id = trimws(latinname),
+         final_id = tolower(final_id),
+         final_id = gsub(" ", "_", final_id),
+         size = trimws(size),
+         size = tolower(size),
+         size = gsub(" ", "_", size),
+         size = if_else(size == "not_applicable",
+                        as.character(NA),
+                        size))
+bay.carb <- left_join(bay.test, carbon.df, by = c("final_id", "size"))
+
+
+test <- bay.carb %>% 
+  filter(is.na(old_carbon))
+```

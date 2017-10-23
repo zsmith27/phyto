@@ -1,0 +1,31 @@
+---
+title: "Introduction"
+output: html_notebook
+---
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate)
+```
+
+The `clean_up()` function will be used when data is imported to remove common 
+issues and prevent
+```{r}
+clean_string <- function(x) {
+  x %>% 
+    trimws() %>% 
+    tolower() %>% 
+    stringr::str_replace_all("\\s+", " ") %>% 
+    stringr::str_replace_all(" ", "_") %>%  
+    if_else(. == "", as.character(NA), .)
+}
+```
+
+
+```{r}
+clean_up <- function(x) {
+  x %>% 
+    rename_all(clean_string) %>% 
+    mutate_if(is.character, clean_string) %>% 
+    distinct()
+}
+```
+
