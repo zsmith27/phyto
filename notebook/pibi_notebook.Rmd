@@ -1,0 +1,79 @@
+---
+title: "PIBI Notebook: Draft"
+author: "Zachary M. Smith"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '6'
+    toc_float: yes
+  html_notebook:
+    collapsed: no
+    number_sections: no
+    smooth_scroll: no
+    theme: spacelab
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+  word_document: default
+---
+
+`r Sys.Date()`
+
+
+```{r, echo=FALSE}
+evaluate <- TRUE
+```
+
+## Introduction
+```{r child = 'intro.Rmd', eval=TRUE}
+
+```
+
+## Prepare Taxonomic Hierarchy
+```{r child = 'prep_hierarchy.Rmd', eval=TRUE}
+
+```
+
+## Prepare Carbon Assignments
+```{r child = 'prep_carbon.Rmd', eval=TRUE}
+
+```
+
+## Prepare Water Quality Data
+```{r child = 'prep_wq.Rmd', eval=TRUE}
+
+```
+
+## Prepare Event Data
+```{r child = 'prep_events.Rmd', eval=TRUE}
+
+```
+
+## Prepare Station Data
+```{r child = 'prep_station.Rmd', eval=TRUE}
+
+```
+
+## Metric Calculation
+```{r child = 'metric_calc.Rmd', eval=TRUE}
+
+```
+
+## Score and Rate Metrics
+```{r child = 'scores_ratings.Rmd', eval=TRUE}
+
+```
+
+## Map Ratings
+```{r child = 'map_ratings.Rmd', eval=TRUE}
+
+```
+
+## Validation
+```{r child = 'validation.Rmd', eval=TRUE}
+
+```

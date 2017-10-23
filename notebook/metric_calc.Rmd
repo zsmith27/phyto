@@ -1,0 +1,43 @@
+---
+title: "Metric Calculation"
+output: html_notebook
+---
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+```
+
+Subset `bay.df` to just represent the columns necessary for metric calculations. Samples without specified salinity zones (`salzone`) are excluded.
+```{r}
+bay.taxa <- bay.df %>% 
+  select(unique_id, sampledate, season, salzone,
+         surface_chla, chla, pheophytin, doc,
+         reportingvalue, biomass, final_id,
+         division, phylum, class, species)  %>% 
+  filter(!is.na(salzone)) %>% 
+  distinct()
+```
+
+The majority of the metrics are calculated using the Multi-Metric Index R-package I am developing, `mmir`. `mmir` is installed and loaded in the Introduction. All of the metrics are calculated for each unique sampling event (`unique_id`), even though not every phytoplankton index uses the same metrics. This is down to simplify the process and the filter of metrics to calculate the IBI scores is done during the scoring section.
+```{r}
+metrics.df <- bay.taxa %>% 
+  select(unique_id, surface_chla, chla, doc, pheophytin) %>% 
+  distinct() %>% 
+  mutate(total_phyto_biomass = taxa_abund(bay.taxa, unique_id, biomass, species),
+         total_phyto_biomass_chla_ratio = total_phyto_biomass / chla,
+         pct_cryptophyte = taxa_pct(bay.taxa, unique_id, biomass, division, "cryptophycophyta"),
+         cyanophyte_biomass = taxa_abund(bay.taxa, unique_id, biomass, phylum, "cyanobacteria"), 
+         diatom_biomass = taxa_abund(bay.taxa, unique_id, biomass, class, "bacillariophyceae"),
+         dinoflagellate_biomass = taxa_abund(bay.taxa, unique_id, biomass, division, "pyrrophycophyta"),
+         microcystis_aeruginosa_abundance = taxa_abund(bay.taxa, unique_id,
+                                                       reportingvalue, species, "microcystis_aeruginosa"),
+         #picoplankton_abundance = taxa_abund(bay.taxa, unique_id, reportingvalue, picoplankton, TRUE),
+         prorocentrum_minimum_abundance = taxa_abund(bay.taxa, unique_id, reportingvalue, species, "prorocentrum_minimum")
+         )
+```
+
+`metrics.df` is converted to a long data format, which will make it easier to score the metrics in the following section.
+```{r}
+metrics.long <- metrics.df %>% 
+  gather(metric, value, "surface_chla":"prorocentrum_minimum_abundance")
+```
+

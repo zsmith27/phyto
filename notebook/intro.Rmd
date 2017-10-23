@@ -1,0 +1,54 @@
+---
+title: "Introduction"
+output: html_notebook
+---
+```{r echo=FALSE}
+evaluate <- TRUE
+knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+```
+
+This R-script and documentation was created to calculate the Phytoplankton Index of Biotic Integrity (PIBI) for the Chesapeake Bay and its tidal tributaries developed by [Lacouture et al. (2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/). The following text documents the process used to prepare and calculate the PIBI. Data was acquired from the Chesapeake Bay Program's (CBP) CEDR database.
+
+### Getting Started
+
+Load the necessary packages into the environment. 
+```{r load_packages, message=FALSE}
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(readxl)
+library(httr)
+library(RCurl)
+```
+
+__mmir__ is a costume package that I am developing to calculate taxonomic community metrics. The development version of __mmir__ can be downloaded from [my GitHub account](https://github.com/zsmith27/mmir) using `devtools::install_github(repo = "zsmith27/mmir")`. After the installation __mmir__ must be loaded into the environment using `library()`.
+```{r}
+library(mmir)
+```
+
+The `clean_string()` function modifies character objects by removing leading/trailing white space, converting all characters to lower case, and replacing all spaces (" ") with an underscore ("_"). These specifications eliminate common typos and standardize character objects.
+```{r}
+clean_string <- function(x) {
+  x %>% 
+    stringr::str_trim() %>% 
+    tolower() %>% 
+    stringr::str_replace_all("\\s+", " ") %>% 
+    stringr::str_replace_all(" ", "_") %>%  
+    if_else(. == "", as.character(NA), .)
+}
+```
+
+The `clean_up()` function is a wrapper for `clean_string()`. This function applies `clean_string()` to the column headers and character columns of data frames. Again, this process standardizes character values and makes it easier work with the data.
+```{r}
+clean_up <- function(x) {
+  x %>% 
+    rename_all(clean_string) %>% 
+    mutate_if(is.character, funs(clean_string))%>% 
+    distinct()
+}
+```
+
+Data for this document are located in various files. The object `project.dir` represents the phytoplankton project directory and will be used as the root of the file path throughout the document.
+```{r}
+project.dir <- "D:/ZSmith/Projects/PIBI/phyto"
+```

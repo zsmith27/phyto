@@ -1,0 +1,294 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+```
+
+### Import Old Values
+
+Import metric values, scores, IBI values, and ratings calculated by Jacqueline M. Johnson of the Chesapeake Bay Program over 10 years ago. This data provides and independent set of metric values, scores, IBI values, and index ratings to compare to the values determined in this document.
+```{r}
+old.org.df <- read_excel("D:/ZSmith/Projects/PIBI/phyto/data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx",
+                         sheet = "DATA_4+biometrics",
+                         skip = 1) %>% 
+  clean_up()
+```
+
+Metrics and scores are in a wide data format, where each metric or score represents a column. Create a vector of the metrics of interest. The score columns have the same names as the metrics but "__1" is added as a suffix. Therefore, `scores.vec` is created by pasting "__1" on to the end of each of the strings in `metrics.vec`.
+```{r}
+metrics.vec <- c("chl_surf", "biomass_chl_ratio", "cyano_biomass", "doc",
+                 "pheo", "tot_biomass", "diatom_biomass", "dino_biomass",
+                 "prorocentrum_min_abund", "microcystis_aer_abund",
+                 "crypto_bio_pct")
+
+scores.vec <- paste0(metrics.vec, "__1")
+```
+
+Remove all unnecessary columns.
+```{r}
+old.sub <- old.org.df %>% 
+  select(station, sample_date, season, ibi_layer, ibi_salzone, metrics.vec, scores.vec) 
+```
+
+Remove the score columns from `old.org.df` and transform the metric data to a long data format.
+```{r}
+old.metrics <- old.sub %>%
+  select(-one_of(scores.vec)) %>% 
+  gather(metric, old_metric_value, -station, -sample_date, -season, -ibi_layer, -ibi_salzone)
+```
+
+Remove the metric columns from `old.org.df` and transform the score data to a long data format. Remove the "__1" suffix from the scores name, which is just a reference to the metric name.
+```{r}
+old.score <- old.sub %>% 
+  select(-one_of(metrics.vec)) %>% 
+  gather(metric, old_score_value, -station, -sample_date, -season, -ibi_layer, -ibi_salzone) %>% 
+  mutate(metric = str_replace(metric, "__1", "")) %>% 
+  group_by(station, sample_date, season, ibi_layer, ibi_salzone) %>% 
+  mutate(old_ibi_score = mean(old_score_value, na.rm = TRUE)) %>% 
+  ungroup()
+```
+
+`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words each row represents a unique events (`unique_id`) metric value (`old_metric_value`) and score (`old_score_value`).
+```{r}
+old.df <- full_join(old.metrics, old.score,
+                    by = c("station", "sample_date", "season",
+                           "ibi_layer", "ibi_salzone", "metric"))
+```
+
+Convert column names and metric names to be consistent with the names found in `ratings.df`.
+```{r}
+old.df <- left_join(old.df, old.org.df,
+                    by = c("station", "sample_date", "season", "ibi_layer", "ibi_salzone")) %>% 
+  select(station, sample_date, season, ibi_layer, ibi_salzone, metric,
+         old_metric_value, old_score_value, old_ibi_score, pibi_rank) %>% 
+  rename(layer = ibi_layer,
+         salzone = ibi_salzone,
+         date = sample_date) %>% 
+  mutate(date = as.Date(date),
+         metric = case_when(
+           metric == "chl_surf" ~ "surface_chla",
+           metric == "biomass_chl_ratio" ~ "total_phyto_biomass_chla_ratio",
+           metric == "cyano_biomass" ~ "cyanophyte_biomass",
+           metric == "pheo" ~ "pheophytin",
+           metric == "tot_biomass" ~ "total_phyto_biomass",
+           metric == "dino_biomass" ~ "dinoflagellate_biomass",
+           metric == "prorocentrum_min_abund" ~ "prorocentrum_minimum_abundance",
+           metric == "microcystis_aer_abund" ~ "microcystis_aeruginosa_abundance",
+           metric == "crypto_bio_pct" ~ "pct_cryptophyte",
+           TRUE ~ metric
+         ))
+```
+
+### Modify Old Values
+
+Re-score the metric values from `old.df` using `score_phyto()`. This allows the user to compare the new scoring procedure in this document to the independent scoring procedure created by Jacqueline M. Johnson of the Chesapeake Bay Program in SQL.
+```{r}
+old.rescored <- old.df %>% 
+  rename(value = old_metric_value) %>% 
+  unite(unique_id, station, layer, date, season, salzone, remove = FALSE) %>% 
+  score_phyto(pico.warning = FALSE)
+```
+
+Calculate the IBI score based on the scores calculated in the previous code chunk.
+```{r}
+old.rescored <- old.rescored %>% 
+  group_by(unique_id) %>% 
+  mutate(ibi_score = mean(score, na.rm = TRUE),
+         old_ibi_score = mean(old_score_value, na.rm = TRUE)) %>% 
+  ungroup() 
+```
+
+Rate the unique events (`unique_id`) IBI score calculated in the previous code chunk using `rate_phyto()`.
+```{r}
+old.rescored <- rate_phyto(old.rescored)
+```
+
+### Scoring Disagreement
+
+Identify IBI scores re-calculated in this document that differ from the IBI scores calculated by Jacqueline M. Johnson. All numeric values are rounded to the hundredth place to remove minor discrepancies between the values being compared. The absolute difference between the re-calculated IBI score and Jacqueline M. Johnson's IBI score is calculated (`ibi_diff`). Rows are sorted to present IBI score differences in descending order (`ibi_diff`) and only rows where the IBI differences disagree (`ibi_diff > 0`) are retained. This data frame can be used to explore differences in individual metric scores that are causing discrepancies between the two IBI values. Season (`season`) and salinity zone (`salzone`) are extracted from the unique event identifier (`unique_id`) and combined (`unite()`) to represent phytoplankton index names. Metrics (`metric`) and indices (`index`) are converted to factors to make them easier to plot in subsequent code chunks.
+```{r}
+disagree.df <- old.rescored %>% 
+  mutate_if(is.numeric, round, digits = 2) %>% 
+  mutate(ibi_diff = abs(old_ibi_score - ibi_score)) %>% 
+  arrange(desc(ibi_diff)) %>% 
+  select(unique_id, metric, value, old_score_value, score, old_ibi_score, ibi_score, ibi_diff, pibi_rank, rating) %>% 
+  separate(unique_id, c("station", "layer", "date", "season", "salzone"), sep = "_", remove = FALSE) %>% 
+  unite(index, c("season", "salzone")) %>% 
+  select(-station, -layer, -date) %>% 
+  mutate(metric = factor(metric),
+         index = factor(index)) %>% 
+  filter(ibi_diff > 0)
+```
+
+Focus on just the IBI scores that differ. Categorize the IBI score differences (`ibi_diff`) into bins representing 0.5 increments.
+```{r}
+disagree.ibi <- disagree.df %>% 
+  select(unique_id, index, old_ibi_score, ibi_score, ibi_diff, pibi_rank, rating) %>% 
+  mutate(disagree_bin = case_when(
+    ibi_diff > 0 & ibi_diff <= 0.5 ~ "0 < IBI Score <= 0.5",
+    ibi_diff > 0.5 & ibi_diff <= 1 ~ "0.5 < IBI Score <= 1.0",
+    ibi_diff > 1 & ibi_diff <= 1.5 ~ "1.0 < IBI Score <= 1.5",
+    ibi_diff > 1.5 & ibi_diff <= 2 ~ "1.5 < IBI Score <= 2.0",
+    ibi_diff > 2 & ibi_diff <= 2.5 ~ "2.0 < IBI Score <= 2.5",
+    ibi_diff > 2.5 & ibi_diff <= 3 ~ "2.5 < IBI Score <= 3.0",
+    ibi_diff > 3 & ibi_diff <= 3.5 ~ "3.0 < IBI Score <= 3.5",
+    ibi_diff > 3.5 & ibi_diff <= 4 ~ "3.5 < IBI Score <= 4.0",
+    TRUE ~ "ERROR"
+  )) %>% 
+  distinct() 
+```
+
+If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
+```{r}
+if (nrow(disagree.ibi) > 0) {
+  ggplot(disagree.ibi, aes(index, fill = index)) +
+    geom_bar() +
+    facet_wrap(~ disagree_bin, scales = "free_x") +
+    coord_flip()
+}
+```
+
+Focus just on scores that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_score_value`), and this documents re-scored values (`score`). Find the absolute difference (`score_diff`) between Jacqueline M. Johnson's scores (`old_score_value`) and this documents re-scored values (`score`). Only rows where the scores disagree (`score_diff > 0`) are retained.
+```{r}
+disagree.score <- disagree.df %>% 
+  select(unique_id, index, metric, value, old_score_value, score) %>% 
+  distinct() %>% 
+  mutate(score_diff = abs(old_score_value - score)) %>% 
+  filter(score_diff > 0) %>% 
+  group_by(metric, index) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  tidyr::complete(metric, index) %>% 
+  mutate(count = if_else(is.na(count), as.integer(0), count))
+```
+
+If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
+```{r, fig.width = 8, fig.height = 6}
+if (nrow(disagree.score) > 0) {
+  ggplot(disagree.score, aes(metric, count, fill = metric)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~index, ncol = 4) +
+    theme(legend.position = "bottom") +
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+```
+
+### Metric Disagreement
+
+This section compares the values found in this document to the values found by Jacqueline M. Johnson. The previous section was good for identifying issues related to scoring the metrics. This section identifies issues related to the metric values. The discrepancies found here most likely do not have to deal with the formula used to calculate the metrics but probably stem from differences in how the taxonomic counts are prepared.
+
+Values from this document (`ratings.df`) are merged with Jacqueline M. Johnson's values (`old.df`).  Season (`season`) and salinity zone (`salzone`) are combined (`unite()`) to represent phytoplankton index names. Metrics (`metric`), indices (`index`), and data sources (`source`) are converted to factors to make them easier to plot in subsequent code chunks.
+```{r}
+join.df <- left_join(ratings.df, old.df, by = c("station", "date", "season", "salzone",  "metric")) %>% 
+  filter(date <= max(old.df$date)) %>% 
+  unite(index, season, salzone) %>% 
+  left_join(unique(bay.df[, c("unique_id", "source")]), by = "unique_id") %>% 
+  mutate(index = factor(index),
+         metric = factor(metric),
+         source = factor(source))
+```
+
+The numeric values are all rounded to the hundredth place to reduce the detection of minor discrepancies. The absolute difference between the re-calculated IBI score and Jacqueline M. Johnson's IBI score is calculated (`ibi_diff`). Rows are sorted to present IBI score differences in descending order (`ibi_diff`) and only rows where the IBI differences disagree (`ibi_diff > 0`) are retained. This data frame can be used to explore differences in individual metric scores that are causing discrepancies between the two IBI values.
+```{r}
+join.df <- join.df %>% 
+  mutate_if(is.numeric, round, digits = 2) %>% 
+  mutate(metric_diff = abs(value - old_metric_value),
+         score_diff = abs(score - old_score_value),
+         ibi_diff = abs(ibi_score - old_ibi_score)) %>% 
+  select(unique_id,  metric, index, source,
+         value, old_metric_value, metric_diff,
+         score, old_score_value, score_diff,
+         ibi_score, old_ibi_score, ibi_diff,
+         rating, pibi_rank)
+```
+
+Identify IBI scores calculated in this document that differ from the IBI scores calculated by Jacqueline M. Johnson.
+```{r}
+diff.df <- join.df %>% 
+  filter(ibi_diff > 0) %>% 
+  arrange(desc(ibi_diff), desc(score_diff), desc(metric_diff)) %>% 
+  distinct()
+```
+
+Focus on just the IBI scores that differ. Categorize the IBI score differences (`ibi_diff`) into bins representing 0.5 increments.
+```{r}
+diff.ibi <- diff.df %>% 
+  select(-metric, -value, -old_metric_value, -metric_diff,
+         -score, -old_score_value, - score_diff) %>% 
+  mutate(disagree_bin = case_when(
+    ibi_diff > 0 & ibi_diff <= 0.5 ~ "0 < IBI Score <= 0.5",
+    ibi_diff > 0.5 & ibi_diff <= 1 ~ "0.5 < IBI Score <= 1.0",
+    ibi_diff > 1 & ibi_diff <= 1.5 ~ "1.0 < IBI Score <= 1.5",
+    ibi_diff > 1.5 & ibi_diff <= 2 ~ "1.5 < IBI Score <= 2.0",
+    ibi_diff > 2 & ibi_diff <= 2.5 ~ "2.0 < IBI Score <= 2.5",
+    ibi_diff > 2.5 & ibi_diff <= 3 ~ "2.5 < IBI Score <= 3.0",
+    ibi_diff > 3 & ibi_diff <= 3.5 ~ "3.0 < IBI Score <= 3.5",
+    ibi_diff > 3.5 & ibi_diff <= 4 ~ "3.5 < IBI Score <= 4.0",
+    TRUE ~ "ERROR"
+  )) %>% 
+  distinct() %>% 
+  arrange(desc(ibi_diff))
+```
+
+If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
+```{r}
+if (nrow(diff.ibi) > 0) {
+  ggplot(diff.ibi, aes(index, fill = index)) +
+    geom_bar() +
+    facet_wrap(~ disagree_bin) + 
+    xlab("Index") +
+    ylab("Number of Discrepancies") +
+    coord_flip() 
+}
+```
+
+Focus just on scores that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_score_value`), and this documents scored values (`score`). Find the absolute difference (`score_diff`) between Jacqueline M. Johnson's scores (`old_score_value`) and this documents scored values (`score`). Only rows where the scores disagree (`score_diff > 0`) are retained.
+```{r}
+diff.score <- diff.df %>% 
+  select(unique_id, index, source,  metric, value, old_score_value, score) %>% 
+  distinct() %>% 
+  mutate(score_diff = abs(old_score_value - score)) %>% 
+  filter(score_diff > 0)
+```
+
+If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
+```{r, fig.width = 8, fig.height = 6}
+if (nrow(diff.score) > 0) {
+  ggplot(diff.score, aes(metric, fill = metric)) +
+    geom_bar() +
+    coord_flip() +
+    facet_wrap(~index, ncol = 4)+
+    theme(legend.position = "bottom") +
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+```
+
+More information can be gleaned from the previous plot if the data source (`source`) is also used as a grouping factor. Counts of score differences are summed by `metric`, `index`, and `source`.
+```{r}
+diff.score.source <- diff.score %>% 
+  group_by(metric, index, source) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  tidyr::complete(metric, index, source) %>% 
+  mutate(count = if_else(is.na(count), as.integer(0), count))
+```
+
+If there is at least one metric score disagreement for `diff.score.source`, plot the counts of score disagreement for each metric by source (`source`) and index (`index`).
+```{r, fig.width = 8, fig.height = 25}
+if (nrow(diff.score.source) > 0) {
+  ggplot(diff.score.source, aes(metric, count, fill = metric)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~index + source, ncol = 2) +
+    theme(legend.position = "bottom") +
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+```
+
+## Conclusion
+
+Currently, there are a large number of descrepancies between the IBI values calculated in this document and the IBI values found by Jacqueline M. Johnson of the Chesapeake Bay Program. The scoring functions provided in this document appear to be functioning correctly based on the [Scoring Disagreement] section. After using the scoring functions to re-score the metric values provided by Jacqueline M. Johnson, several errors were identified and corrected. These corrections reducing the scoring descrepancies to less than 10. Most of the remaining descrepancies are found at scoring thresholds. Jacqueline M. Johnson's code provided the best description of scoring thresholds, which have been replicated in the [Scoring Functions] section; at this time, I have no justification for altering the thresholds further, so the few descrapencies will remain. Ultimately, the [Scoring Disagreement] section suggests that any remaining descrapancies between the values found in this document and the values values found by Jacqueline M. Johnson are caused by differences in metric calculations and/or, more likely, differences in taxonomic count preperations. So far, no table has been found representing Jacqueline M. Johnson's prepared taxonomic counts. This table would make it easier to identify descrepancies in how the taxa are prepared (e.g. excluded taxa or assigned carbon values). Without this table I need help identifying why these descrepancies exist. If you have any suggestions, please let me know.

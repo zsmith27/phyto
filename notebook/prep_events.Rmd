@@ -1,0 +1,49 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+```
+
+Import "Event" data provided by Mike Mallonee of the Chesapeake Bay Program and apply `clean_up()`. ODU `longitude` was not reported as negative; therefore, longitude is multiplied by -1.
+```{r}
+lrr.event <- data.table::fread(file.path(project.dir, "data/station/LivingResourcesMonitorEventHUC8.csv"),
+                            data.table = FALSE) %>% 
+  clean_up()
+  
+
+odu.event <- data.table::fread(file.path(project.dir, "data/station/ODU_2013_2016_Phytoplankton_Events_07jul17.csv"),
+                            data.table = FALSE) %>% 
+  clean_up() %>% 
+  mutate(longitude = longitude * -1)
+```
+
+The "Event" data is appended together and duplicates are removed. Some of the salinity zones (`salzone`) differ from the categories in Lacouture et al. [(2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/). Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
+```{r}
+events.df <- bind_rows(lrr.event, odu.event) %>% 
+  distinct() %>% 
+  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"),
+         salzone = case_when(
+           salzone %in% c("tf", "fe") ~ "f",
+           salzone == "me" ~ "m",
+           salzone == "oe" ~ "o",
+           salzone == "pe" ~ "p",
+           TRUE ~ salzone
+         ))
+#rm(lrr.event, odu.event)
+```
+
+Retain only unique information regarding the data provider (`source`), station name (`station`), sample date (`sampledate`), water layer (`layer`), and salinity zone (`salzone`).
+```{r}
+events.sub <- events.df %>% 
+  select(source, station, sampledate, layer, salzone) %>% 
+  distinct()
+```
+
+Join `bay.df` and `events.sub` to combine phytoplankton count data with event data.
+```{r}
+bay.df <- left_join(bay.df, events.sub, by = c("source", "station",
+                                               "sampledate", "layer")) %>% 
+  mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
+```
