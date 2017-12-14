@@ -9,6 +9,18 @@ knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
 
 This R-script and documentation was created to calculate the Phytoplankton Index of Biotic Integrity (PIBI) for the Chesapeake Bay and its tidal tributaries developed by [Lacouture et al. (2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/). The following text documents the process used to prepare and calculate the PIBI. Data was acquired from the Chesapeake Bay Program's (CBP) CEDR database.
 
+### Intended Audience
+
+I developed this document for the Chesapeake Bay Program and individuals/groups interested in assessing the Chesapeake Bay condition with phytoplankton. My hope is that this document will allow others to assess Chesapeake Bay conditions based on the indices developed by [Lacouture et al. (2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/). 
+
+This document provides the R code necessary to import, prepare, and calculated the indices developed by [Lacouture et al. (2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/). __R Markdown__ is used to integrate text and code. The intention is to provide a more readable document, with better descriptions of how and why an activity was performed, than a standard R script with a few commented lines. Although my hope is that readers without any R background could comprehend the R code in this document with a little bit of patience, this document is really intended for readers with at least a basic understanding of R programming. 
+
+Additionally, I am a big fan of the [tidyverse packages](https://www.tidyverse.org/packages/) developed by the [RStudio](https://www.rstudio.com/) team and use these packages frequently throughout the document. The [tidyverse](https://www.tidyverse.org/packages/) is essentially an ecosystem of packages that work well together and often make it easier to deal with data in R. For R users who do not use packages from the [tidyverse](https://www.tidyverse.org/packages/), I think many of the functions will be intuitive or easy to quickly search for online. However, I often find that the pipe operator, `%>%`, from the [magrittr package](http://magrittr.tidyverse.org/) is confusing to those unfamiliar with the [tidyverse](https://www.tidyverse.org/packages/), and right fully so. It takes a little while to wrap your head around the pipe operator but once you do I think you will find its use makes R code more legible. In essence base R works from the inside-out, while the pipe operator presents the code in a linear fashion. For example, imagine you have a character vector `x` and you want to trim leading/trailing white space, then keep only unique strings, and then make all characters lowercase. In base R, the code would look this: `tolower(unique(trimws(x)))`. Again, base R works from the inside-out, so first `trimws()` is used to remove leading/trailing white space, then `unique()` is used to remove duplicate strings, and finally `tolower()` is used to convert all characters to lowercase. Using the pipe operator, the code would look like this: `x %>% trimws() %>%  unique() %>% tolower()`. The pipe operator presents the functions in the order you intend them to be performed; therefore, the code should be easier to read and more intuitive, which should in turn reduce errors. For more information on the pipe operator please refer to [http://magrittr.tidyverse.org/](http://magrittr.tidyverse.org/).
+
+### Download and Edit this Document
+
+This document can be downloaded and edited from my [GitHub account](https://github.com/zsmith27/phyto). As stated in the previous section, this document was created using __R Markdown__, so that the code could be integrated with descriptive text. The document is broken up into multiple children documents in the "notebook" folder, which are all compiled together using the "pipi_notebook.Rmd" parent document. For small corrections, the easiest way to inform me will be to [open a new issue on the GitHub respository for this document](https://github.com/zsmith27/phyto/issues). However, my hope is that there will be others interested in becoming more involved, of whom I can add as collaborators to the Git Hub repository. [RStudio has made it very easy to connect R projects to GitHub](https://support.rstudio.com/hc/en-us/articles/200532077-Version-Control-with-Git-and-SVN). Using these tools, it can be very easy to "push" and "pull" edits, while maintaining a record of the documents history. If you are interested in collaborating on this document, please contact me, [Zachary M. Smith](https://www.potomacriver.org/about-us/staff/).
+
 ### Getting Started
 
 Load the necessary packages into the environment. 
@@ -25,6 +37,18 @@ __mmir__ is a costume package that I am developing to calculate taxonomic commun
 ```{r}
 library(mmir)
 ```
+
+`sessionInfo()` is used to provide the information necessary to replicate this document. As packages are updated, especially __mmir__, functions may become defunct or a function may not respond in a similar fashion to previous versions of the package. Without the information provided by `sessionInfo()` it can be extremely difficult, if not impossible to replicate the results in this report.
+```{r}
+sessionInfo()
+```
+
+Data for this document are located in various files. The object `project.dir` represents the phytoplankton project directory and will be used as the root of the file path throughout the document.
+```{r}
+project.dir <- "D:/ZSmith/Projects/PIBI/phyto"
+```
+
+### Custom Functions
 
 The `clean_string()` function modifies character objects by removing leading/trailing white space, converting all characters to lower case, and replacing all spaces (" ") with an underscore ("_"). These specifications eliminate common typos and standardize character objects.
 ```{r}
@@ -48,7 +72,3 @@ clean_up <- function(x) {
 }
 ```
 
-Data for this document are located in various files. The object `project.dir` represents the phytoplankton project directory and will be used as the root of the file path throughout the document.
-```{r}
-project.dir <- "D:/ZSmith/Projects/PIBI/phyto"
-```
