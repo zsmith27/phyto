@@ -3,10 +3,10 @@ title: "R Notebook"
 output: html_notebook
 ---
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-Import "Event" data provided by Mike Mallonee of the Chesapeake Bay Program and apply `clean_up()`. ODU `longitude` was not reported as negative; therefore, longitude is multiplied by -1.
+Import "Event" data provided by the Chesapeake Bay Program Water Quality Database Manager (currently [Mike Mallonee](https://www.potomacriver.org/about-us/staff/)) and apply `clean_up()`. ODU `longitude` was not reported as negative; therefore, longitude is multiplied by -1.
 ```{r}
 lrr.event <- data.table::fread(file.path(project.dir, "data/station/LivingResourcesMonitorEventHUC8.csv"),
                             data.table = FALSE) %>% 
@@ -19,7 +19,7 @@ odu.event <- data.table::fread(file.path(project.dir, "data/station/ODU_2013_201
   mutate(longitude = longitude * -1)
 ```
 
-The "Event" data is appended together and duplicates are removed. Some of the salinity zones (`salzone`) differ from the categories in Lacouture et al. [(2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/). Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
+The "Event" data is appended together and duplicates are removed. Some of the salinity zones (`salzone`) differ from the categories in [@lacouture_phytoplankton_2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
 ```{r}
 events.df <- bind_rows(lrr.event, odu.event) %>% 
   distinct() %>% 
@@ -39,6 +39,54 @@ Retain only unique information regarding the data provider (`source`), station n
 events.sub <- events.df %>% 
   select(source, station, sampledate, layer, salzone) %>% 
   distinct()
+```
+
+Import the salinity zone used by Jacqueline M. Johnson of the Chesapeake Bay Program. This will provide a check of salinity zone classification from 10 years ago to the salinity zone classification in CEDR.
+```{r}
+old.salzone <- read_excel("D:/ZSmith/Projects/PIBI/phyto/data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx",
+                         sheet = "DATA_4+biometrics",
+                         skip = 1) %>% 
+  clean_up() %>% 
+  select(station, sample_date, ibi_salzone) %>% 
+  mutate(sample_date = as.Date(sample_date)) %>% 
+  rename(old_salzone = ibi_salzone,
+         sampledate = sample_date) %>% 
+  distinct()
+```
+
+Append the salinity zone defined by Jacqueline M. Johnson (`old_salzone`) to `wq.df`.
+```{r}
+events.sub <- inner_join(events.sub, old.salzone, by = c("station", "sampledate"))
+```
+
+```{r}
+events.sub <- events.sub %>% 
+  mutate(salzone_disagree = if_else(salzone != old_salzone, TRUE, FALSE))
+```
+
+```{r}
+salzone.diff <- events.sub %>% 
+  select(station, sampledate, source, salzone, old_salzone, salzone_disagree) %>% 
+  unite(sal_group, salzone, old_salzone) %>% 
+  distinct() %>% 
+  filter(salzone_disagree == TRUE) %>% 
+  group_by(sal_group) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  arrange(count) %>% 
+  mutate(sal_group = factor(sal_group, levels = unique(sal_group)))
+```
+
+```{r}
+ggplot(salzone.diff, aes(sal_group, count, fill = count)) + 
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_bar(stat = "identity") 
+```
+
+```{r}
+events.sub <- events.sub %>% 
+  rename(cedr_salzone = salzone) %>% 
+  mutate(salzone = if_else(salzone_disagree == TRUE, old_salzone, cedr_salzone))
 ```
 
 Join `bay.df` and `events.sub` to combine phytoplankton count data with event data.

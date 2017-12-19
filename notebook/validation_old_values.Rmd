@@ -1,0 +1,119 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
+```
+
+### Import Old Values
+
+Import metric values, scores, IBI values, and ratings calculated by Jacqueline M. Johnson of the Chesapeake Bay Program over 10 years ago. This data provides and independent set of metric values, scores, IBI values, and index ratings to compare to the values determined in this document.
+```{r}
+old.org.df <- read_excel("D:/ZSmith/Projects/PIBI/phyto/data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx",
+                         sheet = "DATA_4+biometrics",
+                         skip = 1) %>% 
+  clean_up()
+```
+
+Metrics and scores are in a wide data format, where each metric or score represents a column. Create a vector of the metrics of interest. The score columns have the same names as the metrics but "__1" is added as a suffix. Therefore, `scores.vec` is created by pasting "__1" on to the end of each of the strings in `metrics.vec`.
+```{r}
+metrics.vec <- c("chl_surf", "biomass_chl_ratio", "cyano_biomass", "doc",
+                 "pheo", "tot_biomass", "diatom_biomass", "dino_biomass",
+                 "prorocentrum_min_abund", "microcystis_aer_abund",
+                 "crypto_bio_pct")
+
+scores.vec <- paste0(metrics.vec, "__1")
+```
+
+Remove all unnecessary columns.
+```{r}
+old.sub <- old.org.df %>% 
+  mutate(old_rating = str_replace_all(pibi_rank, "-", "_")) %>% 
+  rename(old_org_ibi_score = pibi_score) %>% 
+  select(station, sample_date, season, ibi_layer, ibi_salzone,
+         metrics.vec, scores.vec, old_rating, old_org_ibi_score
+         ) 
+```
+
+Remove the score columns from `old.org.df` and transform the metric data to a long data format.
+```{r}
+old.metrics <- old.sub %>%
+  select(-one_of(scores.vec)) %>% 
+  gather(metric, old_metric_value, -station, -sample_date,
+         -season, -ibi_layer, -ibi_salzone,
+         -old_rating, -old_org_ibi_score)
+```
+
+Remove the metric columns from `old.org.df` and transform the score data to a long data format. Remove the "__1" suffix from the scores name, which is just a reference to the metric name.
+```{r}
+old.score <- old.sub %>% 
+  select(-one_of(metrics.vec)) %>% 
+  gather(metric, old_score_value, -station, -sample_date,
+         -season, -ibi_layer, -ibi_salzone, -old_rating, -old_org_ibi_score
+         ) %>% 
+  mutate(metric = str_replace(metric, "__1", "")) %>% 
+  group_by(station, sample_date, season, ibi_layer, ibi_salzone) %>% 
+  mutate(old_ibi_score = mean(old_score_value, na.rm = TRUE)) %>% 
+  ungroup()
+```
+
+`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words each row represents a unique events (`unique_id`) metric value (`old_metric_value`) and score (`old_score_value`).
+```{r}
+old.df <- full_join(old.metrics, old.score,
+                    by = c("station", "sample_date", "season",
+                           "ibi_layer", "ibi_salzone", "metric",
+                           "old_rating", "old_org_ibi_score"))
+```
+
+Convert column names and metric names to be consistent with the names found in `ratings.df`.
+```{r}
+old.df <- left_join(old.df, old.org.df,
+                    by = c("station", "sample_date", "season", "ibi_layer", "ibi_salzone")) %>% 
+  select(station, sample_date, season, ibi_layer, ibi_salzone, metric,
+         old_metric_value, old_score_value,
+         old_org_ibi_score,
+         old_ibi_score, old_rating
+         ) %>% 
+  rename(layer = ibi_layer,
+         salzone = ibi_salzone,
+         date = sample_date) %>% 
+  mutate(date = as.Date(date),
+         metric = case_when(
+           metric == "chl_surf" ~ "surface_chla",
+           metric == "biomass_chl_ratio" ~ "total_phyto_biomass_chla_ratio",
+           metric == "cyano_biomass" ~ "cyanophyte_biomass",
+           metric == "pheo" ~ "pheophytin",
+           metric == "tot_biomass" ~ "total_phyto_biomass",
+           metric == "dino_biomass" ~ "dinoflagellate_biomass",
+           metric == "prorocentrum_min_abund" ~ "prorocentrum_minimum_abundance",
+           metric == "microcystis_aer_abund" ~ "microcystis_aeruginosa_abundance",
+           metric == "crypto_bio_pct" ~ "pct_cryptophyte",
+           TRUE ~ metric
+         ))
+```
+
+### Modify Old Values
+
+Re-score the metric values from `old.df` using `score_phyto()`. This allows the user to compare the new scoring procedure in this document to the independent scoring procedure created by Jacqueline M. Johnson of the Chesapeake Bay Program in SQL.
+```{r}
+old.rescored <- old.df %>% 
+  rename(value = old_metric_value) %>% 
+  unite(unique_id, station, layer, date, season, salzone, remove = FALSE) %>% 
+  score_phyto(pico.warning = FALSE)
+```
+
+Calculate the IBI score based on the scores calculated in the previous code chunk.
+```{r}
+old.rescored <- old.rescored %>% 
+  group_by(unique_id) %>% 
+  mutate(ibi_score = mean(score, na.rm = TRUE),
+         old_ibi_score = mean(old_score_value, na.rm = TRUE)) %>% 
+  ungroup() 
+```
+
+Rate the unique events (`unique_id`) IBI score calculated in the previous code chunk using `rate_phyto()`.
+```{r}
+old.rescored <- rate_phyto(old.rescored)
+```

@@ -1,10 +1,12 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
 The process below pulls XLSX files from an ftp site. I have included the code in case updates are required. However, this code is slow and it is much faster to import the finished product that is stored in this projects data directory.
@@ -74,7 +76,7 @@ cedr.wq <- file.path(project.dir, "data/wq", "cedr_wq_data_imported_11_30_17.csv
          sample_time = stringr::str_sub(sample_time, 12, 19))
 ```
 
-Newer water quality data was provided by Mike Mallonee and saved into the R-project directory. `lapply()` is used to import data from multiple years, append them together, and apply the `clean_up()` function.
+Newer water quality data was provided by the Chesapeake Bay Program Water Quality Manager, [Mike Mallonee](https://www.potomacriver.org/about-us/staff/), and saved into the R-project directory. `lapply()` is used to import data from multiple years, append them together, and apply the `clean_up()` function.
 ```{r}
 odu.wq <- lapply(c("2013", "2014", "2015", "2016"), function(year.i) {
   file.name <- paste0("ODU_", year.i, "_CEDR_WQ_Data_25oct17_ALL_phytp_events.csv")
@@ -112,6 +114,19 @@ wq.df <- wq.df %>%
     select(-all_p, -all_na, -exclude)
 ```
 
+Extract the salinity zone (`salzone`) found in `bay.df`.
+```{r}
+bay.salzone <- bay.df %>% 
+  select(station, sampledate, salzone) %>% 
+  rename(sample_date = sampledate) %>% 
+  distinct()
+```
+
+Append the salinity zone (`salzone`) to `wq.df`.
+```{r}
+wq.df <- inner_join(wq.df, bay.salzone, by = c("station", "sample_date"))
+```
+
 ## Processing
 
 The phytoplankton indices only utilize measures of Dissolved Organic Carbon (DOC), chlorophyll a, and pheophytin. Therefore, only these water quality parameters are retained.
@@ -141,7 +156,7 @@ leaflet(stations.df) %>%
                                   "Longitude:", stations.df$longitude))
 ```
 
-The following chunks of code summarize the water quality data according the the Methods section in [Buchanan et al. (2005, pg. 139)](https://link.springer.com/article/10.1007/BF02732760)). The water quality data is divided into separate data frames, manipulated accordingly, and then appended back together.
+The following chunks of code summarize the water quality data according the the Methods section in [@buchanan_phytoplankton_2005] (page 139). The water quality data is divided into separate data frames, manipulated accordingly, and then appended back together.
 
 Surface chlorophyll a ("s_chla") is extracted as a separate data frame and the summarized to represent the mean value for each station, replicate type, and date.
 ```{r}
@@ -155,10 +170,11 @@ wq.s_chla <- wq.df %>%
   ungroup()
 ```
 
-If the upper pycnocline depth is not specified, then the mean for each parameter (i.e. chlorophyll a, pheophytin, DOC) is found using samples from the entire water column [(Buchanan et al. 2005, pg. 139)](https://link.springer.com/article/10.1007/BF02732760).
+If the upper pycnocline depth is not specified, then the mean for each parameter (i.e. chlorophyll a, pheophytin, DOC) is found using samples from the entire water column [@buchanan_phytoplankton_2005] (page 139).
 ```{r}
 wq.sub.tf <- wq.df %>% 
-  filter(is.na(upperpycnocline)) %>% 
+  filter(salzone == "f") %>% 
+  #filter(is.na(upperpycnocline)) %>% 
   #filter(startsWith(station, "f")) %>% 
   select(station, samplereplicatetype, sample_date, parameter, measurevalue) %>% 
   filter(grepl("chla|pheo|doc", parameter)) %>% 
@@ -175,10 +191,11 @@ wq.sub.tf <- wq.df %>%
   ungroup()
 ```
 
-If the upper pycnocline depth is specified, then the mean for each parameter (i.e. chlorophyll a, pheophytin, DOC) is found using samples specified as above the pycnocline ("ap") and surface ("s") [(Buchanan et al. 2005, pg. 139)](https://link.springer.com/article/10.1007/BF02732760).
+If the upper pycnocline depth is specified, then the mean for each parameter (i.e. chlorophyll a, pheophytin, DOC) is found using samples specified as above the pycnocline ("ap") and surface ("s") [@buchanan_phytoplankton_2005] (page 139).
 ```{r}
-wq.sub.pico <- wq.df %>% 
-  filter(!is.na(upperpycnocline),
+wq.sub.pycno <- wq.df %>% 
+  filter(salzone != "f",
+    #!is.na(upperpycnocline),
          grepl("ap_|s_", parameter)) %>% 
   #filter(!startsWith(station, "f")) %>% 
   select(station, samplereplicatetype, sample_date, parameter, measurevalue) %>% 
@@ -197,13 +214,13 @@ wq.sub.pico <- wq.df %>%
 
 The separate water quality data frames are appended together.
 ```{r}
-wq.sub <- bind_rows(wq.s_chla, wq.sub.tf, wq.sub.pico) %>% 
+wq.sub <- bind_rows(wq.s_chla, wq.sub.tf, wq.sub.pycno) %>% 
   rename(date = sample_date)
 ```
 
 ## 3-Day Window
 
-In many case the water quality data was not collected on the same day as the phytoplankton data. To obtain more phytoplankton sampling events with associated water quality data, Lacouture et al. [(2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/) used water quality data collected within ± 3 days of the phytoplankton.
+In some case the water quality data was not collected on the same day as the phytoplankton data. To obtain more phytoplankton sampling events with associated water quality data, [@lacouture_phytoplankton_2006] used water quality data collected within ± 3 days of the phytoplankton.
 
 `bay.df` is subset to only represent unique combinations of `station` and `sampledate`.
 ```{r}

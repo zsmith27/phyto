@@ -4,182 +4,10 @@ output: html_notebook
 ---
 
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
-```
-
-### Import Old Values
-
-Import metric values, scores, IBI values, and ratings calculated by Jacqueline M. Johnson of the Chesapeake Bay Program over 10 years ago. This data provides and independent set of metric values, scores, IBI values, and index ratings to compare to the values determined in this document.
-```{r}
-old.org.df <- read_excel("D:/ZSmith/Projects/PIBI/phyto/data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx",
-                         sheet = "DATA_4+biometrics",
-                         skip = 1) %>% 
-  clean_up()
-```
-
-Metrics and scores are in a wide data format, where each metric or score represents a column. Create a vector of the metrics of interest. The score columns have the same names as the metrics but "__1" is added as a suffix. Therefore, `scores.vec` is created by pasting "__1" on to the end of each of the strings in `metrics.vec`.
-```{r}
-metrics.vec <- c("chl_surf", "biomass_chl_ratio", "cyano_biomass", "doc",
-                 "pheo", "tot_biomass", "diatom_biomass", "dino_biomass",
-                 "prorocentrum_min_abund", "microcystis_aer_abund",
-                 "crypto_bio_pct")
-
-scores.vec <- paste0(metrics.vec, "__1")
-```
-
-Remove all unnecessary columns.
-```{r}
-old.sub <- old.org.df %>% 
-  select(station, sample_date, season, ibi_layer, ibi_salzone, metrics.vec, scores.vec) 
-```
-
-Remove the score columns from `old.org.df` and transform the metric data to a long data format.
-```{r}
-old.metrics <- old.sub %>%
-  select(-one_of(scores.vec)) %>% 
-  gather(metric, old_metric_value, -station, -sample_date, -season, -ibi_layer, -ibi_salzone)
-```
-
-Remove the metric columns from `old.org.df` and transform the score data to a long data format. Remove the "__1" suffix from the scores name, which is just a reference to the metric name.
-```{r}
-old.score <- old.sub %>% 
-  select(-one_of(metrics.vec)) %>% 
-  gather(metric, old_score_value, -station, -sample_date, -season, -ibi_layer, -ibi_salzone) %>% 
-  mutate(metric = str_replace(metric, "__1", "")) %>% 
-  group_by(station, sample_date, season, ibi_layer, ibi_salzone) %>% 
-  mutate(old_ibi_score = mean(old_score_value, na.rm = TRUE)) %>% 
-  ungroup()
-```
-
-`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words each row represents a unique events (`unique_id`) metric value (`old_metric_value`) and score (`old_score_value`).
-```{r}
-old.df <- full_join(old.metrics, old.score,
-                    by = c("station", "sample_date", "season",
-                           "ibi_layer", "ibi_salzone", "metric"))
-```
-
-Convert column names and metric names to be consistent with the names found in `ratings.df`.
-```{r}
-old.df <- left_join(old.df, old.org.df,
-                    by = c("station", "sample_date", "season", "ibi_layer", "ibi_salzone")) %>% 
-  select(station, sample_date, season, ibi_layer, ibi_salzone, metric,
-         old_metric_value, old_score_value, old_ibi_score, pibi_rank) %>% 
-  rename(layer = ibi_layer,
-         salzone = ibi_salzone,
-         date = sample_date) %>% 
-  mutate(date = as.Date(date),
-         metric = case_when(
-           metric == "chl_surf" ~ "surface_chla",
-           metric == "biomass_chl_ratio" ~ "total_phyto_biomass_chla_ratio",
-           metric == "cyano_biomass" ~ "cyanophyte_biomass",
-           metric == "pheo" ~ "pheophytin",
-           metric == "tot_biomass" ~ "total_phyto_biomass",
-           metric == "dino_biomass" ~ "dinoflagellate_biomass",
-           metric == "prorocentrum_min_abund" ~ "prorocentrum_minimum_abundance",
-           metric == "microcystis_aer_abund" ~ "microcystis_aeruginosa_abundance",
-           metric == "crypto_bio_pct" ~ "pct_cryptophyte",
-           TRUE ~ metric
-         ))
-```
-
-### Modify Old Values
-
-Re-score the metric values from `old.df` using `score_phyto()`. This allows the user to compare the new scoring procedure in this document to the independent scoring procedure created by Jacqueline M. Johnson of the Chesapeake Bay Program in SQL.
-```{r}
-old.rescored <- old.df %>% 
-  rename(value = old_metric_value) %>% 
-  unite(unique_id, station, layer, date, season, salzone, remove = FALSE) %>% 
-  score_phyto(pico.warning = FALSE)
-```
-
-Calculate the IBI score based on the scores calculated in the previous code chunk.
-```{r}
-old.rescored <- old.rescored %>% 
-  group_by(unique_id) %>% 
-  mutate(ibi_score = mean(score, na.rm = TRUE),
-         old_ibi_score = mean(old_score_value, na.rm = TRUE)) %>% 
-  ungroup() 
-```
-
-Rate the unique events (`unique_id`) IBI score calculated in the previous code chunk using `rate_phyto()`.
-```{r}
-old.rescored <- rate_phyto(old.rescored)
-```
-
-### Scoring Disagreement
-
-Identify IBI scores re-calculated in this document that differ from the IBI scores calculated by Jacqueline M. Johnson. All numeric values are rounded to the hundredth place to remove minor discrepancies between the values being compared. The absolute difference between the re-calculated IBI score and Jacqueline M. Johnson's IBI score is calculated (`ibi_diff`). Rows are sorted to present IBI score differences in descending order (`ibi_diff`) and only rows where the IBI differences disagree (`ibi_diff > 0`) are retained. This data frame can be used to explore differences in individual metric scores that are causing discrepancies between the two IBI values. Season (`season`) and salinity zone (`salzone`) are extracted from the unique event identifier (`unique_id`) and combined (`unite()`) to represent phytoplankton index names. Metrics (`metric`) and indices (`index`) are converted to factors to make them easier to plot in subsequent code chunks.
-```{r}
-disagree.df <- old.rescored %>% 
-  mutate_if(is.numeric, round, digits = 2) %>% 
-  mutate(ibi_diff = abs(old_ibi_score - ibi_score)) %>% 
-  arrange(desc(ibi_diff)) %>% 
-  select(unique_id, metric, value, old_score_value, score, old_ibi_score, ibi_score, ibi_diff, pibi_rank, rating) %>% 
-  separate(unique_id, c("station", "layer", "date", "season", "salzone"), sep = "_", remove = FALSE) %>% 
-  unite(index, c("season", "salzone")) %>% 
-  select(-station, -layer, -date) %>% 
-  mutate(metric = factor(metric),
-         index = factor(index)) %>% 
-  filter(ibi_diff > 0)
-```
-
-Focus on just the IBI scores that differ. Categorize the IBI score differences (`ibi_diff`) into bins representing 0.5 increments.
-```{r}
-disagree.ibi <- disagree.df %>% 
-  select(unique_id, index, old_ibi_score, ibi_score, ibi_diff, pibi_rank, rating) %>% 
-  mutate(disagree_bin = case_when(
-    ibi_diff > 0 & ibi_diff <= 0.5 ~ "0 < IBI Score <= 0.5",
-    ibi_diff > 0.5 & ibi_diff <= 1 ~ "0.5 < IBI Score <= 1.0",
-    ibi_diff > 1 & ibi_diff <= 1.5 ~ "1.0 < IBI Score <= 1.5",
-    ibi_diff > 1.5 & ibi_diff <= 2 ~ "1.5 < IBI Score <= 2.0",
-    ibi_diff > 2 & ibi_diff <= 2.5 ~ "2.0 < IBI Score <= 2.5",
-    ibi_diff > 2.5 & ibi_diff <= 3 ~ "2.5 < IBI Score <= 3.0",
-    ibi_diff > 3 & ibi_diff <= 3.5 ~ "3.0 < IBI Score <= 3.5",
-    ibi_diff > 3.5 & ibi_diff <= 4 ~ "3.5 < IBI Score <= 4.0",
-    TRUE ~ "ERROR"
-  )) %>% 
-  distinct() 
-```
-
-If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
-```{r}
-if (nrow(disagree.ibi) > 0) {
-  ggplot(disagree.ibi, aes(index, fill = index)) +
-    geom_bar() +
-    facet_wrap(~ disagree_bin, scales = "free_x") +
-    coord_flip()
-}
-```
-
-Focus just on scores that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_score_value`), and this documents re-scored values (`score`). Find the absolute difference (`score_diff`) between Jacqueline M. Johnson's scores (`old_score_value`) and this documents re-scored values (`score`). Only rows where the scores disagree (`score_diff > 0`) are retained.
-```{r}
-disagree.score <- disagree.df %>% 
-  select(unique_id, index, metric, value, old_score_value, score) %>% 
-  distinct() %>% 
-  mutate(score_diff = abs(old_score_value - score)) %>% 
-  filter(score_diff > 0) %>% 
-  group_by(metric, index) %>% 
-  summarize(count = n()) %>% 
-  ungroup() %>% 
-  tidyr::complete(metric, index) %>% 
-  mutate(count = if_else(is.na(count), as.integer(0), count))
-```
-
-If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
-```{r, fig.width = 8, fig.height = 6}
-if (nrow(disagree.score) > 0) {
-  ggplot(disagree.score, aes(metric, count, fill = metric)) +
-    geom_bar(stat = "identity") +
-    coord_flip() +
-    facet_wrap(~index, ncol = 4) +
-    theme(legend.position = "bottom") +
-    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
-}
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
 ### Metric Disagreement
-
-
 
 
 This section compares the values found in this document to the values found by Jacqueline M. Johnson. The previous section was good for identifying issues related to scoring the metrics. This section identifies issues related to the metric values. The discrepancies found here most likely do not have to deal with the formula used to calculate the metrics but probably stem from differences in how the taxonomic counts are prepared.
@@ -217,7 +45,7 @@ join.df <- join.df %>%
          value, old_metric_value, metric_diff,
          score, old_score_value, score_diff,
          ibi_score, old_ibi_score, ibi_diff,
-         rating, pibi_rank)
+         rating, old_rating)
 ```
 
 Identify IBI scores calculated in this document that differ from the IBI scores calculated by Jacqueline M. Johnson.
@@ -303,6 +131,45 @@ if (nrow(diff.score.source) > 0) {
 }
 ```
 
+
+
+
+#### Pheophytin Differences
+
+```{r}
+pheo.df <- diff.df %>% 
+  filter(metric == "pheophytin") %>% 
+  separate(unique_id, c("station", "layer", "samplenumber",
+                        "sampledate", "season", "salzone"), sep = "_",
+           remove = FALSE) %>% 
+  mutate(sampledate = as.Date(sampledate))
+```
+
+```{r}
+pheo.wq <- wq.df %>% 
+  filter(str_detect(parameter, "pheo")) %>% 
+  rename("sampledate" = "sample_date")
+```
+
+```{r eval=FALSE}
+search.df <- pmap(list(1:nrow(pheo.df)), function(row.i) {
+  pheo.sub <- slice(pheo.df, row.i) %>% 
+    mutate_if(is.numeric, round, digits = 2)
+  
+  wq.sub <- inner_join(pheo.wq, pheo.sub, by = c("station", "sampledate"))
+  
+  final.df <- wq.sub %>% 
+    mutate(one_value = if_else(measurevalue == old_metric_value, TRUE, FALSE),
+           mean_wc = if_else(round(mean(wq.sub$measurevalue, na.rm = TRUE), 2) == old_metric_value, TRUE, FALSE),
+           mean_surface = if_else(mean(wq.sub[wq.sub$parameter == "s_pheo", "measurevalue"], na.rm = TRUE) == old_metric_value, TRUE, FALSE))
+  
+  return(final.df)
+}) %>% 
+  bind_rows() %>% 
+  select(unique_id, latinname, size, reportingvalue, dino_abund, old_dino_abund, diff, div)
+```
+
+
 #### Dinoflagellate Biomass Differences
 
 ```{r}
@@ -313,7 +180,10 @@ dino.df <- bay.taxa %>%
            remove = FALSE) %>% 
   mutate(sampledate = as.Date(sampledate)) %>% 
   distinct() %>% 
-  mutate(dino_abund = taxa_abund(bay.taxa, unique_id, reportingvalue, division, "pyrrophycophyta")) %>% 
+  mutate(dino_abund = taxa_abund(bay.taxa, unique_id, reportingvalue, division, "pyrrophycophyta"),
+         scrippsiella_precaria_abund = taxa_abund(bay.taxa, unique_id,
+                                                    reportingvalue, latinname, "scrippsiella_precaria"),
+         dino_abund = dino_abund - scrippsiella_precaria_abund) %>% 
   left_join(unique(bay.df[, c("unique_id", "source")]), by = "unique_id")
 ```
 
@@ -328,7 +198,8 @@ dino.old <- old.org.df %>%
 ```{r}
 dino.join <- left_join(dino.df, dino.old, by = c("station", "sampledate")) %>% 
   mutate(diff = dino_abund - old_dino_abund,
-         div = dino_abund / old_dino_abund)
+         div = dino_abund / old_dino_abund) %>% 
+  filter(!unique_id %in% remove.vec)
 ```
 
 ```{r}
@@ -395,7 +266,7 @@ search.df %>%
 
 #### Biomass Differences
 
-```{r}
+```{r eval=FALSE}
 mass.df <- bay.taxa %>% 
   select(unique_id) %>% 
   separate(unique_id, c("station", "layer", "samplenumber",
@@ -407,7 +278,7 @@ mass.df <- bay.taxa %>%
   left_join(unique(bay.df[, c("unique_id", "source")]), by = "unique_id")
 ```
 
-```{r}
+```{r eval=FALSE}
 mass.old <- old.org.df %>% 
   mutate(sampledate = as.Date(sample_date)) %>% 
   select(station, sampledate, tot_biomass) %>% 
@@ -415,13 +286,13 @@ mass.old <- old.org.df %>%
   distinct()
 ```
 
-```{r}
+```{r eval=FALSE}
 mass.join <- left_join(mass.df, mass.old, by = c("station", "sampledate")) %>% 
   mutate(diff = biomass - old_biomass,
          div = biomass / old_biomass)
 ```
 
-```{r}
+```{r eval=FALSE}
 mass.join %>% 
   filter(diff != 0) %>% 
   unite(index, season, salzone) %>% 
@@ -434,7 +305,7 @@ mass.join %>%
 ```
 
 
-```{r}
+```{r eval=FALSE}
 mass.diff <- mass.join %>% 
   filter(abs(diff) > 50)
 
@@ -458,7 +329,7 @@ search.remove <- search.df %>%
   filter(diff > 0)
 ```
 
-```{r fig.width = 10, fig.height = 25}
+```{r fig.width = 10, fig.height = 25, eval=FALSE}
 search.df %>% 
   separate(unique_id, c("station", "layer", "samplenumber", "date", "season", "salzone"), sep = "_", remove = FALSE) %>% 
   left_join(unique(bay.df[, c("unique_id", "latinname", "size", "source")]), by = c("unique_id", "latinname")) %>% 
@@ -489,13 +360,14 @@ The ratio of total phytoplankton biomass to chlorophyll a is frequently differen
 Using `bay.taxa` from the [Metric Calculation] section, the taxonomic abundances are found for each sampling event (`unique_id`).
 ```{r}
 abund.df <- bay.taxa %>% 
+  filter(!unique_id %in% remove.vec) %>% 
   select(unique_id) %>% 
   separate(unique_id, c("station", "layer", "samplenumber",
                         "sampledate", "season", "salzone"), sep = "_",
            remove = FALSE) %>% 
   mutate(sampledate = as.Date(sampledate)) %>% 
   distinct() %>% 
-  mutate(abundance = taxa_abund(bay.taxa[!is.na(bay.taxa$biomass), ], unique_id, reportingvalue, species)) %>% 
+  mutate(abundance = taxa_abund(bay.taxa[!is.na(bay.taxa$biomass) & !(bay.taxa$unique_id %in% remove.vec), ], unique_id, reportingvalue, species)) %>% 
   left_join(unique(bay.df[, c("unique_id", "source")]), by = "unique_id")
 ```
 
@@ -605,19 +477,19 @@ search.df %>%
   separate(unique_id, c("station", "layer", "samplenumber", "date", "season", "salzone"), sep = "_", remove = FALSE) %>% 
   left_join(unique(bay.df[, c("unique_id", "latinname", "size", "source")]), by = c("unique_id", "latinname")) %>% 
   mutate(year = year(date),
-         dir = if_else(diff < 0, "neg", "pos")) %>% 
+         dir = if_else(diff < 0, "too few", "too many")) %>% 
   group_by(latinname, dir) %>% 
   summarize(count = n()) %>% 
   ungroup() %>% 
-  mutate(count = if_else(dir == "neg", as.integer(-1 * count), as.integer(count))) %>% 
+  mutate(count = if_else(dir == "too few", as.integer(-1 * count), as.integer(count))) %>% 
   group_by(latinname) %>% 
   mutate(total = sum(abs(count))) %>% 
   ungroup() %>% 
   arrange(total) %>% 
   mutate(latinname = factor(latinname, levels = unique(latinname))) %>% 
   ggplot(aes(latinname, count, fill = dir)) +
-  scale_fill_manual(values = c("pos" = "#56B4E9",
-                               "neg" = "#E69F00")) +
+  scale_fill_manual(values = c("too many" = "#56B4E9",
+                               "too few" = "#E69F00")) +
   geom_bar(stat = "identity") +
   coord_flip() #+
 #facet_wrap(~year)

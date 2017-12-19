@@ -5,11 +5,11 @@ output:
     df_print: paged
 ---
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
 ### ITIS
-The [Integrated Taxonomic Information System (ITIS) database](https://itis.gov/downloads/index.html) was downloaded in August of 2017 as a PostgreSQL database. The ITIS database is a useful resource for obtaining taxonomic hierarchy information. The majority of taxa observed in the Chesapeake Bay and its tributaries can be found in the database; however, there are a number of taxa that require edits or are missing entirely from the database. The following script documents the process used to import and modify tibbles from the ITIS database for PIBI purposes.
+The [Integrated Taxonomic Information System (ITIS) database](https://itis.gov/downloads/index.html) was downloaded in August of 2017 as a PostgreSQL database [@itis_integrated_2017]. The ITIS database is a useful resource for obtaining taxonomic hierarchy information. The majority of taxa observed in the Chesapeake Bay and its tributaries can be found in the database; however, there are a number of taxa that require edits or are missing entirely from the database. The following script documents the process used to import and modify tibbles from the ITIS database for PIBI purposes.
 
 Establish the connection to the local ITIS PostgreSQL database.
 ```{r}
@@ -119,13 +119,18 @@ odu.pico <- data.table::fread(file.path(project.dir, "data/taxa/ODU_2013_2016_Pi
   clean_up()
 ```
 
-The three CSVs imported above are appended together. The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [Lacouture et al. (2006 pg. 599)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/) developed indices for data collected in the spring (March-May) and summer (July-September).
+The three CSVs imported above are appended together. 
 ```{r}
-bay.df <- bind_rows(lrr.df, odu.phyto, odu.pico) %>% 
+taxa.raw <- bind_rows(lrr.df, odu.phyto, odu.pico) %>% 
+  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"))
+```
+
+The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [@lacouture_phytoplankton_2006] (page 599) developed indices for data collected in the spring (March-May) and summer (July-September).
+```{r}
+bay.df <- taxa.raw %>% 
   filter(layer %in% c("ap", "wc")) %>% 
   distinct() %>% 
-  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"),
-         month = month(sampledate),
+  mutate(month = month(sampledate),
          season = case_when(
            month %in% c(3, 4, 5) ~ "spring",
            month %in% c(7, 8, 9) ~ "summer",
@@ -152,9 +157,12 @@ Only phytoplankton data ("ph") is retained for analysis. Additionally, some taxa
 bay.df <- bay.df %>% 
   # Removes methods with prefix "BE" (Tidal Benthic Taxa Enumeration) or blanks.
   filter(grepl("ph", method),
-         !latinname %in% c("micro-phytoflagellates", "microflagellates",
-                           "green_cells",
-                           "blue_green_sphere", "epiphytic_flagellates"))
+         !latinname %in% c("micro-phytoflagellates",
+                           "microflagellates",
+                           #"green_cells",
+                           #"blue_green_sphere",
+                           "epiphytic_flagellates",
+                           "hydrodictyon_reticulatum"))
 ```
 
 Non-numeric values and leading zeros were removed from the `nodccode` to make it possible to use this field to merge with data from the ITIS database.
@@ -229,6 +237,45 @@ bay.df <- bay.df %>%
       latinname == "lauterborniella_elegantissima" ~ as.integer(6097),
       latinname == "characium_sp." ~ as.integer(5756),
       latinname == "cylindrospermopsis_sp." ~ as.integer(203689),
+      latinname == "chaetoceros_neogracilis" ~ as.integer(1004011),
+      latinname == "navicula_retusa_cancellata" ~ as.integer(1020372),
+      latinname == "karlodinium_micrum" ~ as.integer(180904),
+      latinname == "lagerheimia" ~ as.integer(6017),
+      latinname == "quadricoccus_euryhalinicus" ~ as.integer(957939),
+      latinname == "scrippsiella_precaria" ~ as.integer(10536),
+      latinname == "psuedosolenia_calcar-avis" ~ as.integer(970064),
+      latinname == "centronella" ~ as.integer(970064),
+      latinname == "amphidinium_tatrae" ~ as.integer(9997),
+      latinname == "navicula_lata" ~ as.integer(4450),
+      latinname == "nitzschia_vitrea_recta" ~ as.integer(5204),
+      latinname == "rhaphoneis_gemmifera" ~ as.integer(3145),
+      latinname == "delphineis_surirella" ~ as.integer(969978),
+      latinname == "navicula_annulata" ~ as.integer(3649),
+      latinname == "proboscia_alata_gracillima" ~ as.integer(610099),
+      latinname == "guinardia_striata" ~ as.integer(2921),
+      latinname == "guinardia_cylindrus" ~ as.integer(2921),
+      latinname == "aphanizomenon_issatschenkoi" ~ as.integer(1191),
+      latinname == "helicotheca_tamesis" ~ as.integer(590815),
+      latinname == "corethron_valdivae" ~ as.integer(2386),
+      latinname == "gonyaulax_conjuncta" ~ as.integer(10359),
+      latinname == "lioloma_delicatulum" ~ as.integer(573597),
+      latinname == "syracosphaera_histrica" ~ as.integer(2234),
+      latinname == "rhizosolenia_formosa" ~ as.integer(2879),
+      latinname == "proboscla_alata_curvirostris" ~ as.integer(610099),
+      latinname == "membraneis_challengeri" ~ as.integer(3648),
+      latinname == "chrysococcus_tesselatus" ~ as.integer(1751),
+      latinname == "rhoicosphenia_abbreviata" ~ as.integer(3633),
+      latinname == "protoperidinium_aciculiferum" ~ as.integer(10340),
+      latinname == "protoperidinium_fimbriatum" ~ as.integer(10340),
+      latinname == "licmophora_inflata" ~ as.integer(3155),
+      latinname == "biddulphia_reticulata" ~ as.integer(2678),
+      latinname == "caloneis_lepidula" ~ as.integer(4369),
+      latinname == "caloneis_trinodis" ~ as.integer(4369),
+      latinname == "amphiprora_cholnokyi" ~ as.integer(4674),
+      latinname == "navicula_interrupta" ~ as.integer(3649),
+      latinname == "cerataulus_radiatus" ~ as.integer(2709),
+      latinname == "gyrosigma_balticum_silimis" ~ as.integer(4623),
+      latinname == "dictyocha_siderea" ~ as.integer(1804),
       TRUE ~ final_tsn
     )
   )
@@ -331,6 +378,11 @@ Some taxa require specific attention before they can be finalized.
 bay.df <- bay.df %>% 
   mutate(
     final_id = if_else(latinname == "trinacria_regina", "trinacria_regina",  final_id),
+    final_id = case_when(
+      latinname == "green_cells" ~ "green_cells",
+      latinname == "blue_green_spheres" ~ "blue_green_spheres",
+      TRUE ~ final_id
+    ),
     kingdom = if_else(latinname == "trinacria_regina",
                       "chromista", kingdom),
     phylum = if_else(latinname == "trinacria_regina",

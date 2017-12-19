@@ -1,0 +1,130 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me, dev = c('png', 'postscript'))
+```
+
+
+### IBI Value, IBI Rating, Metric Scoring Disagreements
+
+The metric values, metric scores, IBI values, and IBI rating calssification by Jacueline M. Johnson were used to evaluate the performance of the R-script developed in this document for calculated metric scores and IBI values. The metric values calculated by Jacueline M. Johnson are scored and the IBI values calculated using the R-scripts described in this document. Jacueline M. Johnson, obviously, used these metric values to then calculated metric scores, and subsequently IBI values and IBI ratings; therefore, if the metric scores, IBI values, and IBI ratings generated using this documents R-scripts do not agree with Jacueline M. Johnson's values, then there must be a descrepancy in the scoring procedure, IBI value calculation, or rating classification. The metric values calculated by Jacueline M. Johnson are a baseline from which to validate 
+
+#### IBI Value Disagreement
+
+Identify IBI scores re-calculated in this document that differ from the IBI scores calculated by Jacqueline M. Johnson. All numeric values are rounded to the hundredth place to remove minor discrepancies between the values being compared. The absolute difference between the re-calculated IBI score and Jacqueline M. Johnson's IBI score is calculated (`ibi_diff`). Rows are sorted to present IBI score differences in descending order (`ibi_diff`) and only rows where the IBI differences disagree (`ibi_diff > 0`) are retained. This data frame can be used to explore differences in individual metric scores that are causing discrepancies between the two IBI values. Season (`season`) and salinity zone (`salzone`) are extracted from the unique event identifier (`unique_id`) and combined (`unite()`) to represent phytoplankton index names. Metrics (`metric`) and indices (`index`) are converted to factors to make them easier to plot in subsequent code chunks.
+```{r }
+disagree.df <- old.rescored %>% 
+  mutate_if(is.numeric, round, digits = 2) %>% 
+  mutate(ibi_diff = abs(old_ibi_score - ibi_score)) %>% 
+  arrange(desc(ibi_diff)) %>% 
+  select(unique_id, metric, value, old_score_value, score, 
+         old_ibi_score, ibi_score, ibi_diff, 
+         old_org_ibi_score, old_rating,
+         rating) %>% 
+  separate(unique_id, c("station", "layer", "date", "season", "salzone"), sep = "_", remove = FALSE) %>% 
+  unite(index, c("season", "salzone")) %>% 
+  select(-station, -layer, -date) %>% 
+  mutate(metric = factor(metric),
+         index = factor(index))
+```
+
+Focus on just the IBI scores that differ. Categorize the IBI score differences (`ibi_diff`) into bins representing 0.5 increments.
+```{r }
+disagree.ibi <- disagree.df %>%  
+  filter(ibi_diff > 0) %>% 
+  select(unique_id, index, old_ibi_score, ibi_score, ibi_diff) %>% 
+  mutate(disagree_bin = case_when(
+    ibi_diff > 0 & ibi_diff <= 0.5 ~ "0 < IBI Score <= 0.5",
+    ibi_diff > 0.5 & ibi_diff <= 1 ~ "0.5 < IBI Score <= 1.0",
+    ibi_diff > 1 & ibi_diff <= 1.5 ~ "1.0 < IBI Score <= 1.5",
+    ibi_diff > 1.5 & ibi_diff <= 2 ~ "1.5 < IBI Score <= 2.0",
+    ibi_diff > 2 & ibi_diff <= 2.5 ~ "2.0 < IBI Score <= 2.5",
+    ibi_diff > 2.5 & ibi_diff <= 3 ~ "2.5 < IBI Score <= 3.0",
+    ibi_diff > 3 & ibi_diff <= 3.5 ~ "3.0 < IBI Score <= 3.5",
+    ibi_diff > 3.5 & ibi_diff <= 4 ~ "3.5 < IBI Score <= 4.0",
+    TRUE ~ "ERROR"
+  )) %>% 
+  distinct() 
+```
+
+If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
+```{r }
+if (nrow(disagree.ibi) > 0) {
+  ggplot(disagree.ibi, aes(index, fill = index)) +
+    geom_bar() +
+    facet_wrap(~ disagree_bin, scales = "free_x") +
+    coord_flip()
+}
+```
+
+#### Rating Disagreement
+
+Focus on just ratings that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include only rows where ratings classified in this document (`rating`) and ratings specified by Jacqueline M. Johnson (`old_rating`) disagree. Additionally, only include rows where the unaltered original IBI score reported by Jacqueline M. Johnson (`old_org_ibi_score`) is equivalent to the IBI score calculated in this document (`ibi_score`). The IBI score reported by Jacqueline M. Johnson was modified to exclude any the inclusion of Picophytoplankton abundance (`old_ibi_score`) in the [Modify Old Values] section to provide a better comparison of IBI scores in this document and Jacqueline M. Johnson's IBI scores. However, this method does not allow us to accurately assess ratings. If we apply the rating function, `rate_phyto()`, to Jacqueline M. Johnson's values, then the ratings will always agree when the IBI scores are equivalent. Therefore, the rating assessment must be limited to when the re-calculated IBI scores (`ibi_score`) is equvalent to the unaltered, original IBI score reported by Jacqueline M. Johnson (`old_org_ibi_score`); the comparison of the re-classified IBI ratings (`rating`) with the original IBI rating specified by Jacqueline M. Johnson (`old_rating`) provides an independent check of the rating function, `rate_phyto()`, developed in this document.
+```{r }
+disagree.rating <- disagree.df %>% 
+  filter(rating != old_rating,
+         ibi_score == old_org_ibi_score) %>% 
+  select(unique_id, index, old_ibi_score, ibi_score, old_rating, rating) %>% 
+  distinct()
+```
+
+
+If there is at least one IBI rating disagreement, plot the counts of IBI rating disagreements.
+```{r }
+if (nrow(disagree.rating) > 0) {
+  disagree.rating %>% 
+  mutate(old_rating = factor(old_rating,
+                             levels = c("poor", "fair_poor",
+                                        "fair", "fair_good", "good")),
+         rating = factor(rating,
+                         levels = c("poor", "fair_poor",
+                                    "fair", "fair_good", "good"))) %>% 
+  group_by(old_rating, rating) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  tidyr::complete(old_rating, rating) %>% 
+  mutate(count = if_else(is.na(count), as.integer(0), count)) %>% 
+  ggplot(aes(rating, old_rating,
+             fill = count)) +
+  theme_minimal() +
+  geom_tile() +
+  scale_fill_gradient(low = "#ffffff", high = "#4286f4") +
+  geom_text(aes(label = count, size = 5), hjust = 0.5, vjust = 0.5) +
+  xlab("This Documents Rating") +
+  ylab("Jacqueline M. Johnson's Rating") +
+  theme(legend.position = "none")
+}
+```
+
+#### Metric Score Disagreement
+
+Focus on just scores that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_score_value`), and this documents re-scored values (`score`). Find the absolute difference (`score_diff`) between Jacqueline M. Johnson's scores (`old_score_value`) and this documents re-scored values (`score`). Only rows where the scores disagree (`score_diff > 0`) are retained.
+```{r }
+disagree.score <- disagree.df %>% 
+  filter(ibi_diff > 0) %>% 
+  select(unique_id, index, metric, value, old_score_value, score) %>% 
+  distinct() %>% 
+  mutate(score_diff = abs(old_score_value - score)) %>% 
+  filter(score_diff > 0) %>% 
+  group_by(metric, index) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  tidyr::complete(metric, index) %>% 
+  mutate(count = if_else(is.na(count), as.integer(0), count))
+```
+
+If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
+```{r , fig.width = 8, fig.height = 6}
+if (nrow(disagree.score) > 0) {
+  ggplot(disagree.score, aes(metric, count, fill = metric)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~index, ncol = 4) +
+    theme(legend.position = "bottom") +
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+```
+

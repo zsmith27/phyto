@@ -7,18 +7,8 @@ output:
     toc: yes
     toc_depth: '6'
     toc_float: yes
-  html_notebook:
-    collapsed: no
-    number_sections: no
-    smooth_scroll: no
-    theme: spacelab
-    toc: yes
-    toc_depth: 6
-    toc_float: yes
-  pdf_document:
-    toc: yes
-    toc_depth: '6'
-  word_document: default
+bibliography: D:/ZSmith/Projects/PIBI/phyto/citations.bib
+link-citations: true
 ---
 
 `r Sys.Date()`
@@ -26,6 +16,12 @@ output:
 
 ```{r, echo=FALSE}
 evaluate <- TRUE
+cache.me <- TRUE
+```
+
+## Summary of Issues
+```{r child = 'summary.Rmd', eval=TRUE}
+
 ```
 
 ## Introduction
@@ -43,11 +39,6 @@ evaluate <- TRUE
 
 ```
 
-## Prepare Water Quality Data
-```{r child = 'prep_wq.Rmd', eval=TRUE}
-
-```
-
 ## Prepare Event Data
 ```{r child = 'prep_events.Rmd', eval=TRUE}
 
@@ -55,6 +46,11 @@ evaluate <- TRUE
 
 ## Prepare Station Data
 ```{r child = 'prep_station.Rmd', eval=TRUE}
+
+```
+
+## Prepare Water Quality Data
+```{r child = 'prep_wq.Rmd', eval=TRUE}
 
 ```
 
@@ -74,6 +70,16 @@ evaluate <- TRUE
 ```
 
 ## Validation
-```{r child = 'validation.Rmd', eval=TRUE}
+```{r child = 'validation_old_values.Rmd', eval=TRUE}
 
 ```
+
+```{r child = 'validation_scoring_disagreement.Rmd', eval=TRUE}
+
+```
+
+```{r child = 'validation_metric_disagreement.Rmd', eval=FALSE}
+
+```
+
+## Citations

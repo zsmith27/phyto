@@ -4,7 +4,7 @@ output: html_notebook
 ---
 
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
 A large but incomplete table of taxa size and carbon values is imported from the project data directory.
@@ -22,7 +22,8 @@ carbon.df <- carbon.df %>%
     size %in% "unidentified" ~ as.character(NA),
     str_detect(size, "species|sp.") ~ str_replace_all(size, "sp.#|species_#|species_|species", "sp#"),
     TRUE ~size
-  )) %>% 
+  ),
+  latinname = if_else(latinname == "blue_green_trichome", "blue_green_sphere", latinname)) %>% 
   mutate(picoplankton = if_else(
     diameter <= 20 &
       height <= 20 &
@@ -34,7 +35,10 @@ carbon.df <- carbon.df %>%
     FALSE
   )) %>% 
   select(latinname, size, old_carbon) %>%
-  distinct()
+  distinct() %>% 
+  bind_rows(data.frame(latinname = "asterionellopsis_glacialis", 
+                       old_carbon = carbon.df[carbon.df$latinname == "asterionellopsis_kariana", "old_carbon"],
+                       stringsAsFactors = FALSE))
 ```
 
 Check for taxa with duplicate carbon values. If a taxon have two or more carbon values, then when `carbon.df` is joined with `bay.df` it will duplicate the taxon's reporting value.
@@ -46,7 +50,7 @@ carbon.dups <- carbon.df %>%
   filter(count > 1)
 ```
 
-Taxa with duplicate carbon values: `r unique(carbon.dups$latinname)`. One of the "chaetoceros_wighami" `old_carbon` values is `NA`, and therefore, is excluded. The selected `old_carbon` values for "biddulphia" and "gymnodinium" appear to be the values used by [Lacouture et al. (2006)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/).
+Taxa with duplicate carbon values: `r unique(carbon.dups$latinname)`. One of the "chaetoceros_wighami" `old_carbon` values is `NA`, and therefore, is excluded. The selected `old_carbon` values for "biddulphia" and "gymnodinium" appear to be the values used by [@lacouture_phytoplankton_2006].
 ```{r}
 carbon.df <- carbon.df %>% 
   filter(!(latinname == "chaetoceros_wighami" & is.na(old_carbon)),

@@ -3,14 +3,14 @@ title: "R Notebook"
 output: html_notebook
 ---
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=TRUE)
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
 ### Scoring Functions
 
 The code below seems like a lot of duplication but rating thresholds for each index are very specific and sometimes even the same metric used in two different indices is not scored using the same logic. For example, in the spring  freshwater index total biomass (`total_phyto_biomass`) is scored as either a 1, 3, or 5, while in the spring mesohaline index total biomass (`total_phyto_biomass`) is scored as either a 1 or `NA`. Due to these discrepancies, I have chosen to create a separate function specific to each phytoplankton index.
 
-Each of the functions follows the same logic. `metrics.long` is filtered to only represent a single season and salinity zone (`salzone`). Additionally, `metrics.long` is filtered to only include the metrics associated with the specified season and salinity zone. If any of the required metrics are missing from the data, then and error will be returned specifying that the function in question requires the following metric(s). Finally, the scoring thresholds found in an old Microsoft Access database created by Jacqueline M. Johnson of the Chesapeake Bay Program are applied to each of the metrics. I first tried to use the thresholds provided in Lacouture et al. [(2006 pgs. 602-603)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/) but minor discrepancies, mostly rounding differences, resulted in more errors later in this document; therefore, Jacqueline M. Johnson's thresholds were favored. Originally, summer mesohaline and polyhaline indices included a picoplankton abundance metric. The picoplankton abundance metric has been dropped because picoplankton are no longer collected by the data providers. A warning will still appear if `pico.warning` is not set to `FALSE` indicating that their was no value for picoplankton abundance and therefore no score could be assigned.
+Each of the functions follows the same logic. `metrics.long` is filtered to only represent a single season and salinity zone (`salzone`). Additionally, `metrics.long` is filtered to only include the metrics associated with the specified season and salinity zone. If any of the required metrics are missing from the data, then and error will be returned specifying that the function in question requires the following metric(s). Finally, the scoring thresholds found in an old Microsoft Access database created by Jacqueline M. Johnson of the Chesapeake Bay Program are applied to each of the metrics. I first tried to use the thresholds provided in [@lacouture_phytoplankton_2006] (pages 602-203) but minor discrepancies, mostly rounding differences, resulted in more errors later in this document; therefore, Jacqueline M. Johnson's thresholds were favored. Originally, summer mesohaline and polyhaline indices included a picoplankton abundance metric. The picoplankton abundance metric has been dropped because picoplankton are no longer collected by the data providers. A warning will still appear if `pico.warning` is not set to `FALSE` indicating that their was no value for picoplankton abundance and therefore no score could be assigned.
 
 Each of the scoring functions does not require a description, so only a subheading will be provided to break up the functions.
 
@@ -470,8 +470,8 @@ score_phyto <- function(metrics.long, pico.warning) {
 ```{r}
 scores.df <- metrics.long %>% 
   separate(unique_id, c("station", "layer", "samplenumber",
-                           "sampledate", "season", "salzone"), sep = "_",
-             remove = FALSE) %>% 
+                        "sampledate", "season", "salzone"), sep = "_",
+           remove = FALSE) %>% 
   rename(date = sampledate) %>% 
   score_phyto(pico.warning = FALSE) %>% 
   select(-samplenumber)
@@ -491,7 +491,7 @@ scores.df <- scores.df %>%
 
 ## Ratings
 
-All of the indices were rated using the same rating scheme [(Lacouture et al. 2006 pgs. 611)](https://www.potomacriver.org/focus-areas/aquatic-life/phytoplankton-index-of-biotic-integrity-for-chesapeake-bay/).
+All of the indices were rated using the same rating scheme [@lacouture_phytoplankton_2006] (page 611).
 
 * poor: score <= 2
 * fair-poor: 2 < score < 2.67
@@ -501,22 +501,24 @@ All of the indices were rated using the same rating scheme [(Lacouture et al. 20
 ```{r}
 rate_phyto <- function(scores.df) {
   final.df <- scores.df %>% 
-    mutate(rating = case_when(
-      ibi_score <= 2 ~ "poor",
-      ibi_score > 2 & ibi_score < 2.67 ~ "fair_poor",
-      ibi_score >= 2.67 & ibi_score < 3.33 ~ "fair",
-      ibi_score >= 3.33 & ibi_score <= 4 ~ "fair_good",
-      ibi_score > 4 ~ "good",
-      TRUE ~ "ERROR"
-    ),
-    date = as.Date(date))
+    mutate(
+      ibi_score = round(ibi_score, 2),
+      rating = case_when(
+        ibi_score < 2 ~ "poor",
+        ibi_score >= 2 & ibi_score < 2.67 ~ "fair_poor",
+        ibi_score >= 2.67 & ibi_score < 3.33 ~ "fair",
+        ibi_score >= 3.33 & ibi_score < 4 ~ "fair_good",
+        ibi_score >= 4 ~ "good",
+        TRUE ~ "ERROR"
+      ))
   return(final.df)
 }
 ```
 
 Apply `rate_phyto()` to `scores.df`.
 ```{r}
-ratings.df <- rate_phyto(scores.df)
+ratings.df <- rate_phyto(scores.df) %>% 
+  mutate(date = as.Date(date))
 ```
 
 
