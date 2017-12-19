@@ -1,8 +1,6 @@
 ---
 title: "Hierarchy"
-output:
-  html_document:
-    df_print: paged
+output: html_document
 ---
 ```{r echo=FALSE}
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)

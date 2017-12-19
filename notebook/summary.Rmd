@@ -1,10 +1,10 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: html_document
 ---
 
 ```{r echo=FALSE}
-knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
+#knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
 This document aims to provide R-scripts to calculate the Cheaspeake Bay Phytoplankton indices described by [@lacouture_phytoplankton_2006]. In the [Validation] section of this document, an independent data source is used QA/QC the processes outlined in this document. R functions developed to for metric scoring ([Metric Score Disagreement]), IBI scoring ([IBI Value Disagreement]), and IBI rating ([Rating Disagreement]) for the most part appear to be working correctly ([IBI Value, IBI Rating, Metric Scoring Disagreements]). However, before you dive into the documentation, I would like to direct your attention to a number of descrapencies that were identified in the [Metric Disagreement] section.

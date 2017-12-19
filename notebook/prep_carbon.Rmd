@@ -1,6 +1,6 @@
 ---
 title: "Prepare Carbon Assignments"
-output: html_notebook
+output: html_document
 ---
 
 ```{r echo=FALSE}

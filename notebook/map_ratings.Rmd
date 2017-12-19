@@ -1,6 +1,6 @@
 ---
 title: "Map Ratings"
-output: html_notebook
+output: html_document
 ---
 ```{r echo=FALSE}
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
