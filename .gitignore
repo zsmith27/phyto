@@ -7,3 +7,5 @@ docs
 old
 data
 notebook_script
+*.html
+*.png
