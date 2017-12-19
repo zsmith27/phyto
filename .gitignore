@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 conn_postgres.R
+docs
+old
+data
+notebook_script
