@@ -9,3 +9,7 @@ data
 notebook_script
 *.html
 *.png
+size_codes.csv
+hier_long_9_18_17.csv
+carbon_match.csv
+nmds.R
