@@ -23,7 +23,7 @@ This document can be downloaded and edited from my [GitHub account](https://gith
 
 ### Getting Started
 
-Load the necessary packages into the environment [@dowle_data.table:_2017; @wickham_httr:_2017; @grolemund_dates_2011; @wickham_stringr:_2017; @wickham_readxl:_2017; @lang_rcurl:_2016; @wickham_dplyr:_2017; @wickham_tidyr:_2017; @henry_purrr:_2017]. 
+Load the necessary packages into the environment [@dowle_data.table:_2017; @wickham_httr:_2017; @grolemund_dates_2011; @wickham_stringr:_2017; @wickham_readxl:_2017; @lang_rcurl:_2016; @wickham_dplyr:_2017; @wickham_tidyr:_2017; @henry_purrr:_2017] __ADD jsonlite and rprojroot__. 
 ```{r load_packages, message=FALSE}
 library(tidyverse)
 library(lubridate)
@@ -31,6 +31,8 @@ library(readxl)
 library(httr)
 library(RCurl)
 library(data.table)
+library(jsonlite)
+library(rprojroot)
 ```
 
 __mmir__ is a costume package that I am developing to calculate taxonomic community metrics. The development version of __mmir__ can be downloaded from [my GitHub account](https://github.com/zsmith27/mmir) using `devtools::install_github(repo = "zsmith27/mmir")`. After the installation __mmir__ must be loaded into the environment using `library()`.
