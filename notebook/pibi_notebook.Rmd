@@ -29,6 +29,11 @@ cache.me <- TRUE
 
 ```
 
+## Data Acquisition
+```{r child = 'data_acquisition.Rmd', eval=TRUE}
+
+```
+
 ## Prepare Taxonomic Hierarchy
 ```{r child = 'prep_hierarchy.Rmd', eval=TRUE}
 
@@ -78,7 +83,12 @@ cache.me <- TRUE
 
 ```
 
-```{r child = 'validation_metric_disagreement.Rmd', eval=FALSE}
+```{r child = 'validation_metric_disagreement.Rmd', eval=TRUE}
+
+```
+
+## Conclusion
+```{r child = 'conclusions.Rmd', eval=TRUE}
 
 ```
 
