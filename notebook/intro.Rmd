@@ -47,7 +47,7 @@ sessionInfo()
 
 Data for this document are located in various files. The object `project.dir` represents the phytoplankton project directory and will be used as the root of the file path throughout the document.
 ```{r}
-project.dir <- "D:/ZSmith/Projects/PIBI/phyto"
+project.dir <- rprojroot::find_rstudio_root_file()
 ```
 
 ### Custom Functions

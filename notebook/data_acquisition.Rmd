@@ -3,12 +3,6 @@ title: "Untitled"
 output: html_document
 ---
 
-```{r}
-suppressMessages(library(tidyverse))
-suppressMessages(library(jsonlite))
-library(httr)
-```
-
 It is __NOT__ recommended that the following section of R-script be run with everytime this document is compiled. Running this script each time should not cause any errors but could lead to significant wait times associated with downloading the data from CEDR. The phytoplankton taxonomic counts and water quality data is relatively large and can take some time to download; therefore, this script should be run after your intial download from GitHUB, after a known update has been made, or after a signficant amount of time has passed from the intial data download (~6 months). 
 
 The object `run.aquisition` is created to indicate if the user would like to download data from CEDR (`run.acquisition <- TRUE`) or if user has already downloaded the data and wants to skip downloading the data again (`run.acquisition <- FALSE`). In the subsequent code chunks in this section, the CEDR data will be downloaded using the Chesapeake Bay Program CEDR API and the downloaded data will be saved into the R project directory. The data will be imported in subsequent sections.
@@ -62,9 +56,9 @@ phyto.df <- phyto.df %>%
   mutate(SampleDate = as.Date(SampleDate))
 ```
 
-Export the phytoplankton taxonomic counts (`phyto.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
+Export the phytoplankton taxonomic counts (`phyto.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `project.dir`(created using `rprojroot::find_rstudio_root_file()` in [Getting Started]) the necessary folder structure in the project directory will be created, if it does not already exist.
 ```{r}
-dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton"),
+dir.create(file.path(project.dir, "data/phytoplankton"),
            recursive = TRUE, showWarnings = FALSE)
 
 data.table::fwrite(phyto.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_taxa.csv"))
