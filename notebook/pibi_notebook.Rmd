@@ -17,78 +17,79 @@ link-citations: true
 ```{r, echo=FALSE}
 evaluate <- TRUE
 cache.me <- TRUE
+run.acquisition <- FALSE
 ```
 
 ## Summary of Issues
-```{r child = 'summary.Rmd', eval=TRUE}
+```{r child = 'sections/summary.Rmd', eval=TRUE}
 
 ```
 
 ## Introduction
-```{r child = 'intro.Rmd', eval=TRUE}
+```{r child = 'sections/intro.Rmd', eval=TRUE}
 
 ```
 
 ## Data Acquisition
-```{r child = 'data_acquisition.Rmd', eval=TRUE}
+```{r child = 'sections/data_acquisition.Rmd', eval=TRUE}
 
 ```
 
 ## Prepare Taxonomic Hierarchy
-```{r child = 'prep_hierarchy.Rmd', eval=TRUE}
+```{r child = 'sections/prep_hierarchy.Rmd', eval=TRUE}
 
 ```
 
 ## Prepare Carbon Assignments
-```{r child = 'prep_carbon.Rmd', eval=TRUE}
+```{r child = 'sections/prep_carbon.Rmd', eval=TRUE}
 
 ```
 
 ## Prepare Event Data
-```{r child = 'prep_events.Rmd', eval=TRUE}
+```{r child = 'sections/prep_events.Rmd', eval=TRUE}
 
 ```
 
 ## Prepare Station Data
-```{r child = 'prep_station.Rmd', eval=TRUE}
+```{r child = 'sections/prep_station.Rmd', eval=TRUE}
 
 ```
 
 ## Prepare Water Quality Data
-```{r child = 'prep_wq.Rmd', eval=TRUE}
+```{r child = 'sections/prep_wq.Rmd', eval=TRUE}
 
 ```
 
 ## Metric Calculation
-```{r child = 'metric_calc.Rmd', eval=TRUE}
+```{r child = 'sections/metric_calc.Rmd', eval=TRUE}
 
 ```
 
 ## Score and Rate Metrics
-```{r child = 'scores_ratings.Rmd', eval=TRUE}
+```{r child = 'sections/scores_ratings.Rmd', eval=TRUE}
 
 ```
 
 ## Map Ratings
-```{r child = 'map_ratings.Rmd', eval=TRUE}
+```{r child = 'sections/map_ratings.Rmd', eval=TRUE}
 
 ```
 
 ## Validation
-```{r child = 'validation_old_values.Rmd', eval=TRUE}
+```{r child = 'sections/validation_old_values.Rmd', eval=TRUE}
 
 ```
 
-```{r child = 'validation_scoring_disagreement.Rmd', eval=TRUE}
+```{r child = 'sections/validation_scoring_disagreement.Rmd', eval=TRUE}
 
 ```
 
-```{r child = 'validation_metric_disagreement.Rmd', eval=TRUE}
+```{r child = 'sections/validation_metric_disagreement.Rmd', eval=TRUE}
 
 ```
 
 ## Conclusion
-```{r child = 'conclusions.Rmd', eval=TRUE}
+```{r child = 'sections/conclusions.Rmd', eval=TRUE}
 
 ```
 
