@@ -20,12 +20,32 @@ Additionally, I am a big fan of the [tidyverse packages](https://www.tidyverse.o
 
 This document can be downloaded and edited from my [GitHub account](https://github.com/zsmith27/phyto). As stated in the previous section, this document was created using __R Markdown__, so that the code could be integrated with descriptive text. The document is broken up into multiple children documents in the "notebook" folder, which are all compiled together using the "pipi_notebook.Rmd" parent document. For small corrections, the easiest way to inform me will be to [open a new issue on the GitHub respository for this document](https://github.com/zsmith27/phyto/issues). However, my hope is that there will be others interested in becoming more involved, of whom I can add as collaborators to the Git Hub repository. [RStudio has made it very easy to connect R projects to GitHub](https://support.rstudio.com/hc/en-us/articles/200532077-Version-Control-with-Git-and-SVN). Using these tools, it can be very easy to "push" and "pull" edits, while maintaining a record of the documents history. If you are interested in collaborating on this document, please contact me, [Zachary M. Smith](https://www.potomacriver.org/about-us/staff/).
 
+#### How to Download from GitHub
+
+For those interested in collaborating, please [install the latest version of RStudio](https://www.rstudio.com/products/rstudio/download/). RStudio interacts well with GitHub and some aspects of this document may depend on the RStudio IDE. Next create a new project:
+
+1. Create a new project (File -> New Project).
+2. Select Version Control and Git (Version Controal -> Git).
+    + If you recieve a message say "Git Not Found", then you need to install Git ([Install Git Here](https://git-scm.com/downloads)). Once Git is installed, try setting up the project again in RStudio.
+    + I believe RStudio should automatically recognize Git on your computer but I had to specify where the git.exe was located by going to _Tools -> Global Options -> Git/SVN -> locate git.exe (my file path: "C:/Users/zsmith/AppData/Local/Programs/Git/bin/git.exe")_.
+3. Paste the phyto repository URL (https://github.com/zsmith27/phyto.git) into the "Repository URL" box.
+4. Use the "Create project as subdirectory of:" box to manage where you want to store the project on your computer.
+
+#### Compile the Document
+
+To view the html document you must compile the document using Knit. Follow these steps to Knit the document:
+
+1. Open *pibi_notebook.Rmd* in *phyto/notebook*.
+2. Find and click the Knit button (it looks like a ball of yarn) in the toolbar above the editor window.
+    + If a window appears saying "Install Requred Packages" for R Markdown, install the necessary packages for knitting the document.
+3. Hopefully the document will compile correctly. If the document does not compile correctly, try to interpret and correct for the error message returned. If you cannot interprete the error message, please [open a new issue on the GitHub respository for this document](https://github.com/zsmith27/phyto/issues) and I will try to help you resolve the issue.
 
 ### Getting Started
 
-Load the necessary packages into the environment [@dowle_data.table:_2017; @wickham_httr:_2017; @grolemund_dates_2011; @wickham_stringr:_2017; @wickham_readxl:_2017; @lang_rcurl:_2016; @wickham_dplyr:_2017; @wickham_tidyr:_2017; @henry_purrr:_2017] __ADD jsonlite and rprojroot__. 
+Load the necessary packages into the environment [@dowle_data.table:_2017; @wickham_httr:_2017; @grolemund_dates_2011; @wickham_stringr:_2017; @wickham_readxl:_2017; @lang_rcurl:_2016; @wickham_dplyr:_2017; @wickham_tidyr:_2017; @henry_purrr:_2017; @ChengleafletCreateInteractive2017; @OomsjsonlitePackagePractical2014; @MullerrprojrootFindingFiles2017]. 
 ```{r load_packages, message=FALSE}
 library(tidyverse)
+library(leaflet)
 library(lubridate)
 library(readxl)
 library(httr)

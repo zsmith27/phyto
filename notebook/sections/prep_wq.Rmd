@@ -7,122 +7,30 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-The process below pulls XLSX files from an ftp site. I have included the code in case updates are required. However, this code is slow and it is much faster to import the finished product that is stored in this projects data directory.
-
-The water quality data associated with the phytoplankton data is located on a Chesapeake Bay Program ftp site ([ftp://ftp.chesapeakebay.net/Monitoring/mallonee/CEDR_1984_2012_Phytoplankton_WQ_Data_09nov17/](ftp://ftp.chesapeakebay.net/Monitoring/mallonee/CEDR_1984_2012_Phytoplankton_WQ_Data_09nov17/)
-Images). The code below extracts all of the XLSX files from the ftp site.
-
-First, identify all of the XLSX files on the ftp site.
-```{r, eval=FALSE}
-parent.url <- "ftp://ftp.chesapeakebay.net/Monitoring/mallonee/CEDR_1984_2012_Phytoplankton_WQ_Data_09nov17/"
-filenames <- RCurl::getURL(parent.url, ftp.use.epsv = FALSE, dirlistonly = TRUE)
-```
-
-The XLSX names were extracted as a single string. The string is divided to create a vector of values representing each XLSX file. The file, "CEDR_view_1984_2012_PHYTP_events.xlsx", was excluded because it does not contain the same data as the rest of the XLSX files.
-```{r, eval=FALSE}
-urls.vec <- strsplit(filenames, "\\r\\n") %>% 
-  unlist()
-urls.vec <- urls.vec[!urls.vec %in% "CEDR_view_1984_2012_PHYTP_events.xlsx"]
-```
-
-The process for pulling the data from the ftp site can be slow, so the process was parallelized using the package 'parallel' to speed up the computation time. Using the function `detectCores()`, R determines how many cores are available on the computer. Running all cores will most likely lock up the users computer until the computation is complete; therefore, one is subtracted from the number of detected cores and should allow the user to use other programs will the parallelized code is running. Clusters are then made to specify each core. `parallel` requires the user to export data, functions, and libraries to each cluster (i.e. `clusterExport()` and `clusterEvalQ()`). If this information is not exported to each cluster the parallelization will fail.
-```{r message=FALSE, eval=FALSE}
-library(parallel)
-n.cores <- detectCores() - 1
-cl <- makeCluster(n.cores)
-clusterExport(cl = cl, varlist = c("urls.vec", "parent.url", "clean_up"))
-clusterEvalQ(cl, c(library(dplyr), library(httr), library(readxl))) %>% invisible()
-```
-
-`parLapply()` is used to perform the parallelization. This function works the same as `lapply()` by looping through the contained script; however, `parLapply()` performs multiple iterations of the loop at once, while `lapply()` performs one iteration at a time. The code within `parLapply()` imports each XLSX file. After all of the files are imported they are appended together (`bind_rows()`) and the `clean_up()` function is applied. Finally, `stopCluster()` and `closeAllConnections()` are used to terminate the clusters.
-```{r warning=FALSE, eval=FALSE}
-cedr.wq <- parLapply(cl, urls.vec, function(url.i) {
-  print(url.i)
-  url.temp <- paste0(parent.url, url.i)
-  GET(url.temp, write_disk(tf <- tempfile(fileext = ".xlsx")))
-  final.df <- read_excel(tf, col_types = c("numeric",
-                                           rep("text", 2),
-                                           "date",
-                                           "guess",
-                                           rep("text", 4),
-                                           rep("numeric", 4),
-                                           rep("text", 5),
-                                           rep("numeric", 2),
-                                           rep("text", 3),
-                                           rep("text", 4),
-                                           rep("numeric", 4),
-                                           rep("text", 3)))
-  return(final.df)
-}) %>% 
-  bind_rows() %>% 
+Phytoplankton sampling event data obtained from CEDR ([Download Monitoring Event]) is imported.
+```{r}
+wq.df <- data.table::fread(file.path(project.dir, "data/water_quality/cedr_wq.csv"),
+                            data.table = FALSE) %>% 
   clean_up()
-
-stopCluster(cl)
-#closeAllConnections()
 ```
 
-At this point the pre-saved data from the process above is imported. Again, this is done to reduce computation time but the code above must be used if any additional data is added to the ftp site.
-```{r, message=FALSE}
-cedr.wq <- file.path(project.dir, "data/wq", "cedr_wq_data_imported_11_30_17.csv") %>% 
-  data.table::fread(data.table = FALSE,
-                    colClasses = list(character = c("bias_pc", "inputid",
-                                                    "cbsegmentshed2009name",
-                                                    "problem")),
-                    na.strings = c("NA","N/A","null", ""),
-                    showProgress = FALSE) %>% 
-  mutate(sample_date = as.Date(sample_date, "%Y-%m-%d"),
-         sample_time = stringr::str_sub(sample_time, 12, 19))
-```
-
-Newer water quality data was provided by the Chesapeake Bay Program Water Quality Manager, [Mike Mallonee](https://www.potomacriver.org/about-us/staff/), and saved into the R-project directory. `lapply()` is used to import data from multiple years, append them together, and apply the `clean_up()` function.
-```{r}
-odu.wq <- lapply(c("2013", "2014", "2015", "2016"), function(year.i) {
-  file.name <- paste0("ODU_", year.i, "_CEDR_WQ_Data_25oct17_ALL_phytp_events.csv")
-  file.dir <- file.path(project.dir, "data/wq", file.name)
-  data.table::fread(file.dir, data.table = FALSE,
-                    colClasses = list(character = c("Bias_PC", "InputId")),
-                    na.strings = c("NA","N/A","null", ""),
-                    showProgress = FALSE)
-}) %>% 
-  bind_rows() %>% 
-  clean_up() %>% 
-  mutate(sample_date = as.Date(sample_date, format = "%m/%d/%Y"),
-         sample_time = as.POSIXct(sample_time, format = "%H:%M"),
-         sample_time = format(sample_time, "%H:%M:%S"))
-```
-
-The water quality data downloaded from the ftp site is appended with the newer water quality data.
-```{r}
-wq.df <- bind_rows(cedr.wq, odu.wq)
-```
-
-Some of the water quality data for the same station identified pycnocline thresholds (i.e. `lowerpycnocline` and `upperpycnocline`) and another chunk did not. When this is the case, the data with the unidentified pycnocline thresholds are excluded. 
+Convert the sample date (`sampledate`) to class date.
 ```{r}
 wq.df <- wq.df %>% 
-  group_by(station, sample_date) %>% 
-  mutate(all_p = if_else(
-    all(!is.na(lowerpycnocline)) | all(!is.na(upperpycnocline)),
-    TRUE, FALSE),
-    all_na = if_else(
-      all(is.na(lowerpycnocline)) & all(is.na(upperpycnocline)),
-    TRUE, FALSE)) %>% 
-  ungroup() %>% 
-  mutate(exclude = if_else(all_p == all_na & (is.na(lowerpycnocline) & is.na(upperpycnocline)), TRUE, FALSE)) %>% 
-  filter(exclude == FALSE) %>% 
-    select(-all_p, -all_na, -exclude)
+  mutate(sampledate = as.Date(sampledate))
 ```
 
 Extract the salinity zone (`salzone`) found in `bay.df`.
 ```{r}
 bay.salzone <- bay.df %>% 
   select(station, sampledate, salzone) %>% 
-  rename(sample_date = sampledate) %>% 
+  rename(sampledate = sampledate) %>% 
   distinct()
 ```
 
 Append the salinity zone (`salzone`) to `wq.df`.
 ```{r}
-wq.df <- inner_join(wq.df, bay.salzone, by = c("station", "sample_date"))
+wq.df <- inner_join(wq.df, bay.salzone, by = c("station", "sampledate"))
 ```
 
 ## Processing
@@ -138,10 +46,10 @@ wq.df <- wq.df %>%
 
 The stations with water quality data are plotted using `leaflet`, to provide a visual reference and check of the data.
 ```{r}
-library(leaflet)
 stations.df <- wq.df %>% 
-  select(station, agency, datasource, latitude, longitude) %>% 
+  dplyr::select(station, agency, source, latitude, longitude) %>% 
   distinct()
+
 leaflet(stations.df) %>% 
   addProviderTiles(providers$CartoDB.Positron) %>%  
   addCircleMarkers( ~longitude, ~latitude,
@@ -149,7 +57,7 @@ leaflet(stations.df) %>%
                     fillOpacity = 0.5,
                     popup = paste("Station:", stations.df$station, "<br/>",
                                   "Agency:", stations.df$agency, "<br/>",
-                                  "Source:", stations.df$datasource, "<br/>",
+                                  "Source:", stations.df$source, "<br/>",
                                   "Latitude:", stations.df$latitude, "<br/>",
                                   "Longitude:", stations.df$longitude))
 ```
@@ -159,7 +67,7 @@ The following chunks of code summarize the water quality data according the the 
 Surface chlorophyll a ("s_chla") is extracted as a separate data frame and the summarized to represent the mean value for each station, replicate type, and date.
 ```{r}
 wq.s_chla <- wq.df %>% 
-  select(station, samplereplicatetype, sample_date, parameter, measurevalue) %>% 
+  select(station, samplereplicatetype, sampledate, parameter, measurevalue) %>% 
   filter(parameter == "s_chla") %>% 
   distinct() %>% 
   select(-samplereplicatetype) %>% 
@@ -174,7 +82,7 @@ wq.sub.tf <- wq.df %>%
   filter(salzone == "f") %>% 
   #filter(is.na(upperpycnocline)) %>% 
   #filter(startsWith(station, "f")) %>% 
-  select(station, samplereplicatetype, sample_date, parameter, measurevalue) %>% 
+  select(station, samplereplicatetype, sampledate, parameter, measurevalue) %>% 
   filter(grepl("chla|pheo|doc", parameter)) %>% 
   distinct() %>% 
   mutate(parameter = case_when(
@@ -196,7 +104,7 @@ wq.sub.pycno <- wq.df %>%
     #!is.na(upperpycnocline),
          grepl("ap_|s_", parameter)) %>% 
   #filter(!startsWith(station, "f")) %>% 
-  select(station, samplereplicatetype, sample_date, parameter, measurevalue) %>% 
+  select(station, samplereplicatetype, sampledate, parameter, measurevalue) %>% 
   distinct() %>% 
   mutate(parameter = case_when(
     parameter %in% c("ap_chla", "s_chla") ~ "chla",
@@ -213,7 +121,7 @@ wq.sub.pycno <- wq.df %>%
 The separate water quality data frames are appended together.
 ```{r}
 wq.sub <- bind_rows(wq.s_chla, wq.sub.tf, wq.sub.pycno) %>% 
-  rename(date = sample_date)
+  rename(date = sampledate)
 ```
 
 ## 3-Day Window
@@ -280,10 +188,6 @@ The water quality data is transformed from a long data format to a long data for
 ```{r}
 env.wide <- env.df %>% 
   spread(parameter, measurevalue)
-```
-
-```{r}
-#if (!"ap_doc" %in% names(env.wide)) env.wide$ap_doc <- as.numeric(NA)
 ```
 
 `s_shla` and `pheo` are given more descriptive names, `surface_chla` and `pheophytin`, respectively. Additionally, the script ensures that `surface_chla`, `pheophytin`, and `doc` are all numeric values. Finally, the columns are subset to prepare to join with `bay.df`.

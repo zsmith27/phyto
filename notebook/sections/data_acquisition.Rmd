@@ -6,7 +6,7 @@ output: html_document
 It is __NOT__ recommended that the following section of R-script be run with everytime this document is compiled. Running this script each time should not cause any errors but could lead to significant wait times associated with downloading the data from CEDR. The phytoplankton taxonomic counts and water quality data is relatively large and can take some time to download; therefore, this script should be run after your intial download from GitHUB, after a known update has been made, or after a signficant amount of time has passed from the intial data download (~6 months). 
 
 The object `run.aquisition` is created to indicate if the user would like to download data from CEDR (`run.acquisition <- TRUE`) or if user has already downloaded the data and wants to skip downloading the data again (`run.acquisition <- FALSE`). In the subsequent code chunks in this section, the CEDR data will be downloaded using the Chesapeake Bay Program CEDR API and the downloaded data will be saved into the R project directory. The data will be imported in subsequent sections.
-```{r}
+```{r eval=FALSE}
 run.acquisition <- FALSE
 ```
 
@@ -16,7 +16,7 @@ url.root <- "http://datahub.chesapeakebay.net/api.JSON"
 todays.date <- format(Sys.Date(), "%m-%d-%Y")
 ```
 
-### HUC12
+### Download Station Vector
 
 Create a vector (`station.vec`) of stations that contain phytoplankton data. The vector will be used to query data from from the CEDR API in subsequent code chunks.
 ```{r, eval=run.acquisition}
@@ -32,7 +32,7 @@ station.vec <- file.path(url.root,
   pull(unique(MonitoringLocationId))
 ```
 
-### Phytoplankton Data
+### Download Phytoplankton Data
 
 Download all of the phytoplankton data from the CEDR API.
 ```{r, eval=run.acquisition}
@@ -57,14 +57,14 @@ phyto.df <- phyto.df %>%
 ```
 
 Export the phytoplankton taxonomic counts (`phyto.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `project.dir`(created using `rprojroot::find_rstudio_root_file()` in [Getting Started]) the necessary folder structure in the project directory will be created, if it does not already exist.
-```{r}
+```{r, eval=run.acquisition}
 dir.create(file.path(project.dir, "data/phytoplankton"),
            recursive = TRUE, showWarnings = FALSE)
 
 data.table::fwrite(phyto.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_taxa.csv"))
 ```
 
-### Monitoring Event
+### Download Monitoring Event
 
 Download all of the monitoring event data associated with the collection of phytoplankton from the CEDR API.
 ```{r, eval=run.acquisition}
@@ -81,14 +81,14 @@ event.df <- file.path(url.root,
 ```
 
 Export the phytoplankton event data (`event.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
-```{r}
+```{r, eval=run.acquisition}
 dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton"),
            recursive = TRUE, showWarnings = FALSE)
 
 data.table::fwrite(event.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_event.csv"))
 ```
 
-### Station
+### Download Station Information
 
 Download all of the station data associated with the collection of phytoplankton from the CEDR API.
 ```{r, eval=run.acquisition}
@@ -102,14 +102,14 @@ station.df <- file.path(url.root,
 ```
 
 Export the phytoplankton station data (`station.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
-```{r}
+```{r, eval=run.acquisition}
 dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton"),
            recursive = TRUE, showWarnings = FALSE)
 
 data.table::fwrite(station.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_station.csv"))
 ```
 
-### Water Quality Data
+### Download Water Quality Data
 
 Download chlorophyll a, dissolved organic carbon, and pheophytin water quality data collected from the same stations as the phytoplankton data. The minimum and maximum dates found in the phytoplankton taxonomic count data (`phyto.df$SampleDate`) are used to limit the water quality query to reduce the amount of unwanted data and to speed up the download. Three days is subtracted from the minimum date and three days are added to the maximum date becuase water quality data collected within ± 3 day window (see [3-Day Window] for more details).
 ```{r, eval=run.acquisition}
@@ -127,7 +127,7 @@ wq.df <- file.path(url.root,
 ```
 
 Export the water quality data (`wq.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
-```{r}
+```{r, eval=run.acquisition}
 dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/water_quality"),
            recursive = TRUE, showWarnings = FALSE)
 
@@ -135,7 +135,7 @@ data.table::fwrite(wq.df, file.path(rprojroot::find_rstudio_root_file(), "data/w
 ```
 
 Remove data objects that are no longer useful to clean up the global environment.
-```{r}
+```{r, eval=run.acquisition}
 rm(run.acquisition, url.root, todays.date, station.vec, phyto.df, event.df, station.df, wq.df)
 ```
 

@@ -43,10 +43,11 @@ nodc.df <- tbl(conn, "nodc_ids") %>%
 
 The "kingdom" data is imported from the ITIS database and joined to the "taxon_unit_types" data below.
 ```{r}
-kingdoms <- tbl(conn, "kingdoms") %>% 
-  select(1:2) %>% 
-  data.frame() %>% 
-  clean_up()
+kingdoms <- ritis::kingdom_names() %>% 
+  clean_up() %>% 
+  mutate(kingdom_id = as.numeric(kingdomid)) %>% 
+  rename(kingdom_name = kingdomname) %>% 
+  select(kingdom_id, kingdom_name)
 ```
 
 _Section_ and _Subsection_ represent different taxonomic ranks for the Animailia and Plantae kingdoms. Therefore, the appropriate kingdom suffix was added to the end of each of the ranks to keep these ranks separate and allow them to be sorted in the correct order.
@@ -92,35 +93,17 @@ rm(conn, kingdoms, taxa.types, taxa.units)
 
 ### Taxonomic Data
 
-CBP taxonomic count data is imported and `Methods` other than "PH", __PH__-ytoplankton methods, are excluded from the data frame. Additionally, taxa identified as "Micro-phytoflagellates", "Green cells", or "Blue green sphere" were excluded from this analysis because these taxa could not be identified to a discernible taxon, and therefore are not useful.
-
-Several of the NODC codes contain character values that are not present in the ITIS NODC codes. These character values were appended on to valid NODC codes to identify taxa (e.g., species or subspecies) that are not in the NODC database. To obtain as much taxonomic hierarchy data as possible for these taxa, the character values are removed and, when applicable, the numeric values are matched to valid NODC codes and subsequently ITIS `tsn` values. The numeric values are extracted from the `nodccode` column and any leading zeros are removed. 
+Phytoplankton taxonomic count data obtained from CEDR ([Download Phytoplankton Data]) is imported.
 ```{r}
 col.class.vec <- c("SampleNumber" = "character",
                    "TSN" = "character",
                    "SPECCode" = "character",
                    "ReportingValue" = "integer")
-
-lrr.df <- data.table::fread(file.path(project.dir, "data/taxa/LivingResourcesReportedHUC8.csv"),
+taxa.raw <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_taxa.csv"),
                             data.table = FALSE,
                             colClasses = col.class.vec) %>% 
-  clean_up()
-
-odu.phyto <- data.table::fread(file.path(project.dir, "data/taxa/ODU_2013_2016_Phytoplankton_Data_07jul17_mod2.csv"),
-                               data.table = FALSE,
-                               colClasses = col.class.vec) %>% 
-  clean_up()
-
-odu.pico <- data.table::fread(file.path(project.dir, "data/taxa/ODU_2013_2016_Picoplankton_Data_07jul17.csv"),
-                              data.table = FALSE,
-                              colClasses = col.class.vec) %>% 
-  clean_up()
-```
-
-The three CSVs imported above are appended together. 
-```{r}
-taxa.raw <- bind_rows(lrr.df, odu.phyto, odu.pico) %>% 
-  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"))
+  clean_up() %>% 
+  mutate(sampledate = as.Date(sampledate))
 ```
 
 The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [@lacouture_phytoplankton_2006] (page 599) developed indices for data collected in the spring (March-May) and summer (July-September).
@@ -145,10 +128,6 @@ bay.df <- bay.df %>%
   ungroup()
 ```
 
-Clean up the global environment by removing all unnecessary objects.
-```{r}
-rm(lrr.df, odu.phyto, odu.pico)
-```
 
 Only phytoplankton data ("ph") is retained for analysis. Additionally, some taxa were not identified to any useful taxonomic rank and were excluded from the analysis. 
 ```{r}
@@ -319,7 +298,6 @@ hier.long <- hier.df %>%
   gather(col_name, tsn, -final_tsn, na.rm = TRUE) %>% 
   select(-col_name) %>% 
   mutate(tsn = as.numeric(tsn))
-
 ```
 
 `hier.vec` is a vector of all of the taxonomic ranks in ITIS sorted in the 

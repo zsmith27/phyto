@@ -6,24 +6,17 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-Import "Event" data provided by the Chesapeake Bay Program Water Quality Database Manager (currently [Mike Mallonee](https://www.potomacriver.org/about-us/staff/)) and apply `clean_up()`. ODU `longitude` was not reported as negative; therefore, longitude is multiplied by -1.
+Phytoplankton sampling event data obtained from CEDR ([Download Monitoring Event]) is imported.
 ```{r}
-lrr.event <- data.table::fread(file.path(project.dir, "data/station/LivingResourcesMonitorEventHUC8.csv"),
+events.df <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_event.csv"),
                             data.table = FALSE) %>% 
   clean_up()
-  
-
-odu.event <- data.table::fread(file.path(project.dir, "data/station/ODU_2013_2016_Phytoplankton_Events_07jul17.csv"),
-                            data.table = FALSE) %>% 
-  clean_up() %>% 
-  mutate(longitude = longitude * -1)
 ```
 
-The "Event" data is appended together and duplicates are removed. Some of the salinity zones (`salzone`) differ from the categories in [@lacouture_phytoplankton_2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
+Some of the salinity zones (`salzone`) differ from the categories in [@lacouture_phytoplankton_2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
 ```{r}
-events.df <- bind_rows(lrr.event, odu.event) %>% 
-  distinct() %>% 
-  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"),
+events.df <- events.df %>% 
+  mutate(sampledate = as.Date(sampledate),
          salzone = case_when(
            salzone %in% c("tf", "fe") ~ "f",
            salzone == "me" ~ "m",
@@ -31,7 +24,6 @@ events.df <- bind_rows(lrr.event, odu.event) %>%
            salzone == "pe" ~ "p",
            TRUE ~ salzone
          ))
-#rm(lrr.event, odu.event)
 ```
 
 Retain only unique information regarding the data provider (`source`), station name (`station`), sample date (`sampledate`), water layer (`layer`), and salinity zone (`salzone`).
