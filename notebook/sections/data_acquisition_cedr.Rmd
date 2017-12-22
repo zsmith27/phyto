@@ -45,7 +45,7 @@ phyto.df <- file.path(url.root,
                       todays.date, 
                       "17",
                       "Station",
-                      paste(station.vec, collapse = ", ")) %>%
+                      paste(station.vec, collapse = ",")) %>%
   fromJSON() %>% 
   clean_up()
 ```
@@ -151,7 +151,7 @@ event.df <- file.path(url.root,
                       todays.date, 
                       "17",
                       "Station",
-                      paste(station.vec, collapse = ", ")) %>%
+                      paste(station.vec, collapse = ",")) %>%
   fromJSON() %>% 
   clean_up()
 ```
@@ -173,7 +173,7 @@ station.df <- file.path(url.root,
                         "TidalPlankton",
                         "Station",
                         "station",
-                        paste(station.vec, collapse = ", ")) %>%
+                        paste(station.vec, collapse = ",")) %>%
   fromJSON() %>% 
   clean_up()
 ```
@@ -198,7 +198,7 @@ wq.df <- file.path(url.root,
                    "6",
                    "7,16,23,24",
                    "station",
-                   paste(station.vec, collapse = ", "),
+                   paste(station.vec, collapse = ","),
                    "21,34,74") %>% 
   fromJSON() %>% 
   clean_up()
