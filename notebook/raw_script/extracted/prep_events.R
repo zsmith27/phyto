@@ -23,7 +23,7 @@ events.sub <- events.df %>%
   distinct()
 
 ## ------------------------------------------------------------------------
-old.salzone <- read_excel("D:/ZSmith/Projects/PIBI/phyto/data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx",
+old.salzone <- readxl::read_excel(file.path(project.dir, "data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx"),
                          sheet = "DATA_4+biometrics",
                          skip = 1) %>% 
   clean_up() %>% 

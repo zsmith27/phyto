@@ -2,7 +2,7 @@
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 
 ## ------------------------------------------------------------------------
-old.org.df <- read_excel("D:/ZSmith/Projects/PIBI/phyto/data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx",
+old.org.df <- read_excel(file.path(project.dir, "data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx"),
                          sheet = "DATA_4+biometrics",
                          skip = 1) %>% 
   clean_up()

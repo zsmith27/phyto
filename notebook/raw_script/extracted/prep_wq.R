@@ -20,7 +20,7 @@ bay.salzone <- bay.df %>%
 wq.df <- inner_join(wq.df, bay.salzone, by = c("station", "sampledate"))
 
 ## ------------------------------------------------------------------------
-wq.df2 <- wq.df %>% 
+wq.df <- wq.df %>% 
   filter(is.na(problem)) %>% 
   unite(parameter, layer, parameter) %>% 
   filter(str_detect(parameter, "chla|pheo|doc"))

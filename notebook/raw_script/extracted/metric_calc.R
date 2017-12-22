@@ -14,12 +14,11 @@ bay.taxa <- bay.df %>%
 metrics.df <- bay.taxa %>% 
   select(unique_id, surface_chla, chla, doc, pheophytin) %>% 
   distinct() %>% 
-  mutate(total_phyto_biomass = taxa_bund(bay.taxa, unique_id, biomass, species),
+  mutate(total_phyto_biomass = taxa_abund(bay.taxa, unique_id, biomass, species),
          total_phyto_biomass_chla_ratio = total_phyto_biomass / chla,
          pct_cryptophyte = taxa_pct(bay.taxa, unique_id, biomass, division, "cryptophycophyta"),
          cyanophyte_biomass = taxa_abund(bay.taxa, unique_id, biomass, phylum, "cyanobacteria"), 
          diatom_biomass = taxa_abund(bay.taxa, unique_id, biomass, class, "bacillariophyceae"),
-         
          dinoflagellate_biomass = taxa_abund(bay.taxa, unique_id, biomass, division, "pyrrophycophyta"),
          scrippsiella_precaria_biomass = taxa_abund(bay.taxa, unique_id,
                                                     biomass, latinname, "scrippsiella_precaria"),
