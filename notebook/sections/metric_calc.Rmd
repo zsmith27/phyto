@@ -27,7 +27,6 @@ metrics.df <- bay.taxa %>%
          pct_cryptophyte = taxa_pct(bay.taxa, unique_id, biomass, division, "cryptophycophyta"),
          cyanophyte_biomass = taxa_abund(bay.taxa, unique_id, biomass, phylum, "cyanobacteria"), 
          diatom_biomass = taxa_abund(bay.taxa, unique_id, biomass, class, "bacillariophyceae"),
-         
          dinoflagellate_biomass = taxa_abund(bay.taxa, unique_id, biomass, division, "pyrrophycophyta"),
          scrippsiella_precaria_biomass = taxa_abund(bay.taxa, unique_id,
                                                     biomass, latinname, "scrippsiella_precaria"),
