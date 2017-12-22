@@ -14,6 +14,11 @@ Source: CRAN
 Version: 0.7
 Hash: 1ab72df487f06ad5f0de05446cdd4bd6
 
+Package: OptimalCutpoints
+Source: CRAN
+Version: 1.1-3
+Hash: 94b32c44da0fa7a5d728bd8ee0e07df9
+
 Package: R6
 Source: CRAN
 Version: 2.2.2
@@ -71,6 +76,12 @@ Source: CRAN
 Version: 0.4.3
 Hash: e796a434d80c7358cb3eb5acb142fb45
 Requires: dplyr, plyr, psych, reshape2, stringr, tidyr
+
+Package: caTools
+Source: CRAN
+Version: 1.17.1
+Hash: 97cb6f6293cd18d17df77a6383cc6763
+Requires: bitops
 
 Package: callr
 Source: CRAN
