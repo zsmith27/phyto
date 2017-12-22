@@ -10,7 +10,7 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 
 The code below seems like a lot of duplication but rating thresholds for each index are very specific and sometimes even the same metric used in two different indices is not scored using the same logic. For example, in the spring  freshwater index total biomass (`total_phyto_biomass`) is scored as either a 1, 3, or 5, while in the spring mesohaline index total biomass (`total_phyto_biomass`) is scored as either a 1 or `NA`. Due to these discrepancies, I have chosen to create a separate function specific to each phytoplankton index.
 
-Each of the functions follows the same logic. `metrics.long` is filtered to only represent a single season and salinity zone (`salzone`). Additionally, `metrics.long` is filtered to only include the metrics associated with the specified season and salinity zone. If any of the required metrics are missing from the data, then and error will be returned specifying that the function in question requires the following metric(s). Finally, the scoring thresholds found in an old Microsoft Access database created by Jacqueline M. Johnson of the Chesapeake Bay Program are applied to each of the metrics. I first tried to use the thresholds provided in [@lacouture_phytoplankton_2006] (pages 602-203) but minor discrepancies, mostly rounding differences, resulted in more errors later in this document; therefore, Jacqueline M. Johnson's thresholds were favored. Originally, summer mesohaline and polyhaline indices included a picoplankton abundance metric. The picoplankton abundance metric has been dropped because picoplankton are no longer collected by the data providers. A warning will still appear if `pico.warning` is not set to `FALSE` indicating that their was no value for picoplankton abundance and therefore no score could be assigned.
+Each of the functions follows the same logic. `metrics.long` is filtered to only represent a single season and salinity zone (`salzone`). Additionally, `metrics.long` is filtered to only include the metrics associated with the specified season and salinity zone. If any of the required metrics are missing from the data, then and error will be returned specifying that the function in question requires the following metric(s). Finally, the scoring thresholds found in an old Microsoft Access database created by Jacqueline M. Johnson of the Chesapeake Bay Program are applied to each of the metrics. I first tried to use the thresholds provided in [@LacouturePhytoplanktonindexbiotic2006] (pages 602-203) but minor discrepancies, mostly rounding differences, resulted in more errors later in this document; therefore, Jacqueline M. Johnson's thresholds were favored. Originally, summer mesohaline and polyhaline indices included a picoplankton abundance metric. The picoplankton abundance metric has been dropped because picoplankton are no longer collected by the data providers. A warning will still appear if `pico.warning` is not set to `FALSE` indicating that their was no value for picoplankton abundance and therefore no score could be assigned.
 
 Each of the scoring functions does not require a description, so only a subheading will be provided to break up the functions.
 
@@ -491,7 +491,7 @@ scores.df <- scores.df %>%
 
 ## Ratings
 
-All of the indices were rated using the same rating scheme [@lacouture_phytoplankton_2006] (page 611).
+All of the indices were rated using the same rating scheme [@LacouturePhytoplanktonindexbiotic2006] (page 611).
 
 * poor: score <= 2
 * fair-poor: 2 < score < 2.67

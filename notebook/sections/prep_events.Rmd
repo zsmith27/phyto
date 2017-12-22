@@ -9,11 +9,11 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 Phytoplankton sampling event data obtained from CEDR ([Download Monitoring Event]) is imported.
 ```{r}
 events.df <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_event.csv"),
-                            data.table = FALSE) %>% 
-  clean_up()
+                            data.table = FALSE,
+                            na.strings = "")
 ```
 
-Some of the salinity zones (`salzone`) differ from the categories in [@lacouture_phytoplankton_2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
+Some of the salinity zones (`salzone`) differ from the categories in [@LacouturePhytoplanktonindexbiotic2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
 ```{r}
 events.df <- events.df %>% 
   mutate(sampledate = as.Date(sampledate),
@@ -51,11 +51,13 @@ Append the salinity zone defined by Jacqueline M. Johnson (`old_salzone`) to `wq
 events.sub <- inner_join(events.sub, old.salzone, by = c("station", "sampledate"))
 ```
 
+Identify rows where the salinity zone specified by CEDR (`salzone`) differs from the salinity zone specified by Jacqueline M. Johnson (`old_salzone`).
 ```{r}
 events.sub <- events.sub %>% 
   mutate(salzone_disagree = if_else(salzone != old_salzone, TRUE, FALSE))
 ```
 
+Summarize and plot the differences in specified salinity zones.
 ```{r}
 salzone.diff <- events.sub %>% 
   select(station, sampledate, source, salzone, old_salzone, salzone_disagree) %>% 
@@ -66,15 +68,13 @@ salzone.diff <- events.sub %>%
   summarize(count = n()) %>% 
   ungroup() %>% 
   arrange(count) %>% 
-  mutate(sal_group = factor(sal_group, levels = unique(sal_group)))
-```
-
-```{r}
-ggplot(salzone.diff, aes(sal_group, count, fill = count)) + 
+  mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
+  ggplot(aes(sal_group, count, fill = count)) + 
   scale_fill_gradient(low = "lightblue", high = "darkblue") +
   geom_bar(stat = "identity") 
 ```
 
+To be consitent with the data used to develope the PIBI, salinity zones specified by Jacqueline M. Johnson (`old_salzone`) were favored when salinity zones differed, therefore, `salzone` is replaced by `old_salzone` when salinity zones differed.
 ```{r}
 events.sub <- events.sub %>% 
   rename(cedr_salzone = salzone) %>% 

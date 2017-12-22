@@ -6,13 +6,13 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-This R-script and documentation was created to calculate the Phytoplankton Index of Biotic Integrity (PIBI) for the Chesapeake Bay and its tidal tributaries developed by [@lacouture_phytoplankton_2006]. The following text documents the process used to prepare and calculate the PIBI. Data was acquired from the Chesapeake Bay Program's (CBP) CEDR database.
+This R-script and documentation was created to calculate the Phytoplankton Index of Biotic Integrity (PIBI) for the Chesapeake Bay and its tidal tributaries developed by [@LacouturePhytoplanktonindexbiotic2006]. The following text documents the process used to prepare and calculate the PIBI. Data was acquired from the Chesapeake Bay Program's (CBP) CEDR database.
 
 ### Intended Audience
 
-I developed this document for the Chesapeake Bay Program and individuals/groups interested in assessing the Chesapeake Bay condition with phytoplankton. The document describes the how to use the statistical coding language, [@r_core_team_r:_2017], to re-create the PIBI. My hope is that this document will allow others to assess Chesapeake Bay conditions based on the indices developed by [@lacouture_phytoplankton_2006]. 
+I developed this document for the Chesapeake Bay Program and individuals/groups interested in assessing the Chesapeake Bay condition with phytoplankton. The document describes the how to use the statistical coding language, [@RCoreTeamlanguagenvironmentstatistical2017], to re-create the PIBI. My hope is that this document will allow others to assess Chesapeake Bay conditions based on the indices developed by [@LacouturePhytoplanktonindexbiotic2006]. 
 
-This document provides the R code necessary to import, prepare, and calculated the indices developed by [@lacouture_phytoplankton_2006]. __R Markdown__ is used to integrate text and code. The intention is to provide a more readable document, with better descriptions of how and why an activity was performed, than a standard R script with a few commented lines. Although my hope is that readers without any R background could comprehend the R code in this document with a little bit of patience, this document is really intended for readers with at least a basic understanding of R programming. 
+This document provides the R code necessary to import, prepare, and calculated the indices developed by [@LacouturePhytoplanktonindexbiotic2006]. __R Markdown__ is used to integrate text and code. The intention is to provide a more readable document, with better descriptions of how and why an activity was performed, than a standard R script with a few commented lines. Although my hope is that readers without any R background could comprehend the R code in this document with a little bit of patience, this document is really intended for readers with at least a basic understanding of R programming. 
 
 Additionally, I am a big fan of the [tidyverse packages](https://www.tidyverse.org/packages/) developed by the [RStudio](https://www.rstudio.com/) team and use these packages frequently throughout the document. The [tidyverse](https://www.tidyverse.org/packages/) is essentially an ecosystem of packages that work well together and often make it easier to deal with data in R. For R users who do not use packages from the [tidyverse](https://www.tidyverse.org/packages/), I think many of the functions will be intuitive or easy to quickly search for online. However, I often find that the pipe operator, `%>%`, from the [magrittr package](http://magrittr.tidyverse.org/) is confusing to those unfamiliar with the [tidyverse](https://www.tidyverse.org/packages/), and right fully so. It takes a little while to wrap your head around the pipe operator but once you do I think you will find its use makes R code more legible. In essence base R works from the inside-out, while the pipe operator presents the code in a linear fashion. For example, imagine you have a character vector `x` and you want to trim leading/trailing white space, then keep only unique strings, and then make all characters lowercase. In base R, the code would look this: `tolower(unique(trimws(x)))`. Again, base R works from the inside-out, so first `trimws()` is used to remove leading/trailing white space, then `unique()` is used to remove duplicate strings, and finally `tolower()` is used to convert all characters to lowercase. Using the pipe operator, the code would look like this: `x %>% trimws() %>%  unique() %>% tolower()`. The pipe operator presents the functions in the order you intend them to be performed; therefore, the code should be easier to read and more intuitive, which should in turn reduce errors. For more information on the pipe operator please refer to [http://magrittr.tidyverse.org/](http://magrittr.tidyverse.org/).
 
@@ -42,9 +42,14 @@ To view the html document you must compile the document using Knit. Follow these
 
 ### Getting Started
 
-Load the necessary packages into the environment [@dowle_data.table:_2017; @wickham_httr:_2017; @grolemund_dates_2011; @wickham_stringr:_2017; @wickham_readxl:_2017; @lang_rcurl:_2016; @wickham_dplyr:_2017; @wickham_tidyr:_2017; @henry_purrr:_2017; @ChengleafletCreateInteractive2017; @OomsjsonlitePackagePractical2014; @MullerrprojrootFindingFiles2017]. 
+Load the necessary packages into the environment [@DowledatatableExtensions2017; @WickhamhttrToolsWorking2017; @GrolemundDatesTimesMade2011; @WickhamstringrSimpleConsistent2017; @WickhamreadxlReadExcel2017; @LangRCurlGeneralNetwork2016; @WickhamdplyrGrammarData2017; @WickhamtidyrEasilyTidy2017; @HenrypurrrFunctionalProgramming2017; @Wickhamggplot2ElegantGraphics2009;
+@ChengleafletCreateInteractive2017; @OomsjsonlitePackagePractical2014; @MullerrprojrootFindingFiles2017; @ChamberlainritisIntegratedTaxonomic2017]. 
 ```{r load_packages, message=FALSE}
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(purrr)
+library(stringr)
 library(leaflet)
 library(lubridate)
 library(readxl)
@@ -53,6 +58,7 @@ library(RCurl)
 library(data.table)
 library(jsonlite)
 library(rprojroot)
+library(ritis)
 ```
 
 __mmir__ is a costume package that I am developing to calculate taxonomic community metrics. The development version of __mmir__ can be downloaded from [my GitHub account](https://github.com/zsmith27/mmir) using `devtools::install_github(repo = "zsmith27/mmir")`. After the installation __mmir__ must be loaded into the environment using `library()`.

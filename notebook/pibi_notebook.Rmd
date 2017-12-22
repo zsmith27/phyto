@@ -17,7 +17,8 @@ link-citations: true
 ```{r, echo=FALSE}
 evaluate <- TRUE
 cache.me <- TRUE
-run.acquisition <- FALSE
+run.cedr.acquisition <- FALSE
+run.itis.acquisition <- FALSE
 ```
 
 ## Summary of Issues
@@ -31,7 +32,14 @@ run.acquisition <- FALSE
 ```
 
 ## Data Acquisition
-```{r child = 'sections/data_acquisition.Rmd', eval=TRUE}
+
+### CEDR Data
+```{r child = 'sections/data_acquisition_cedr.Rmd', eval=TRUE}
+
+```
+
+### ITIS Data
+```{r child = 'sections/data_acquisition_itis.Rmd', eval=TRUE}
 
 ```
 

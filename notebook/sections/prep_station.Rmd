@@ -14,8 +14,8 @@ missing.taxa<- anti_join(events.df, bay.df, by = "station")
 Phytoplankton station data obtained from CEDR ([Download Station Information]) is imported and `clean_up()` applied.
 ```{r}
 station.df <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_station.csv"),
-                            data.table = FALSE) %>% 
-  clean_up()
+                            data.table = FALSE,
+                            na.strings = "")
 ```
 
 `leaflet` is used to provide a visual reference and check of the data. The stations with event data are plotted as blue circles and the stations without event data are plotted as red circles. `jitter()` is used to alter the points position slightly, to prevent event data for the same station from completely overlapping one another.

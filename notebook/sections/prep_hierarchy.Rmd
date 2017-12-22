@@ -6,107 +6,25 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-### ITIS
-The [Integrated Taxonomic Information System (ITIS) database](https://itis.gov/downloads/index.html) was downloaded in August of 2017 as a PostgreSQL database [@itis_integrated_2017]. The ITIS database is a useful resource for obtaining taxonomic hierarchy information. The majority of taxa observed in the Chesapeake Bay and its tributaries can be found in the database; however, there are a number of taxa that require edits or are missing entirely from the database. The following script documents the process used to import and modify tibbles from the ITIS database for PIBI purposes.
-
-Establish the connection to the local ITIS PostgreSQL database.
-```{r}
-source(file.path(project.dir, "conn_postgres.R"))
-#on.exit(dbDisconnect(conn), add = TRUE)
-```
-
-Import taxa hierarchy data from the ITIS database.
-```{r}
-hier.df <- tbl(conn, "hierarchy") %>% 
-  data.frame() %>% 
-  clean_up()
-```
-
-Import synonym data from the ITIS database. This information is used to identify and convert invalid tsn's to accepted tsn's.
-```{r}
-syn.df <- tbl(conn, "synonym_links") %>% 
-  select(1:2) %>% 
-  data.frame() %>% 
-  clean_up()
-```
-
-Import NODC data from the ITIS database. Several taxa in the CEDR database were assigned a NODC code but not a tsn. Many of the NODC codes can be correctly linked to an accepted tsn using this table. If a leading zero is present in the `nodc_id` column, then it is removed to be consistent with the NODC code format found in the CBP data.
-```{r}
-nodc.df <- tbl(conn, "nodc_ids") %>% 
-  select(nodc_id, tsn) %>% 
-  data.frame() %>% 
-  clean_up() %>% 
-  mutate(nodc_id = gsub("^[0]", "", nodc_id)) %>% 
-  rename(nodccode = nodc_id,
-         nodc_tsn = tsn)
-```
-
-The "kingdom" data is imported from the ITIS database and joined to the "taxon_unit_types" data below.
-```{r}
-kingdoms <- ritis::kingdom_names() %>% 
-  clean_up() %>% 
-  mutate(kingdom_id = as.numeric(kingdomid)) %>% 
-  rename(kingdom_name = kingdomname) %>% 
-  select(kingdom_id, kingdom_name)
-```
-
-_Section_ and _Subsection_ represent different taxonomic ranks for the Animailia and Plantae kingdoms. Therefore, the appropriate kingdom suffix was added to the end of each of the ranks to keep these ranks separate and allow them to be sorted in the correct order.
-```{r}
-taxa.types <- tbl(conn, "taxon_unit_types") %>% 
-  select(kingdom_id, rank_id, rank_name) %>% 
-  distinct() %>% 
-  arrange(rank_id) %>% 
-  data.frame() %>% 
-  clean_up() %>% 
-  left_join(kingdoms, by = "kingdom_id") %>% 
-  mutate(rank_name = case_when(
-    rank_id == 124 ~ "section_animalia",
-    rank_id == 126 ~ "subsection_animalia",
-    rank_id == 200 ~ "section_plantae",
-    rank_id == 210 ~ "subsection_plantae",
-    TRUE ~ rank_name
-  ))
-```
-
-The "taxonomic_units" ITIS table provides all of the TSNs and there associated Kingdom, rank IDs, and Latin names. 
-```{r}
-taxa.units <- tbl(conn, "taxonomic_units") %>% 
-  select(tsn, name_usage, kingdom_id, rank_id, complete_name) %>% 
-  distinct() %>% 
-  data.frame() %>% 
-  clean_up()
-
-#DBI::dbDisconnect(conn$con) %>% invisible()
-#closeAllConnections()
-```
-
-The `taxa.units` and `taxa.types` data frames are joined together by the `kingdom_id` and `rank_id` columns to replace the `rank_id` in `taxa.units` with the associated `rank_name` from `taxa.types.
-```{r}
-taxa.df <- left_join(taxa.units, taxa.types, by = c("kingdom_id", "rank_id")) %>% 
-  select(-kingdom_id, -rank_id, -kingdom_name)
-```
-
-Clean up the global environment by removing all unnecessary objects.
-```{r}
-rm(conn, kingdoms, taxa.types, taxa.units)
-```
+This section joins the phytoplankton data obtained from CEDR ([CEDR Data]) and the taxonomic hierarcy information data obtained from ITIS ([ITIS Data]). 
 
 ### Taxonomic Data
 
 Phytoplankton taxonomic count data obtained from CEDR ([Download Phytoplankton Data]) is imported.
 ```{r}
-col.class.vec <- c("SampleNumber" = "character",
-                   "TSN" = "character",
-                   "SPECCode" = "character",
-                   "ReportingValue" = "integer")
+col.class.vec <- c("samplenumber" = "character",
+                   "tsn" = "character",
+                   "speccode" = "character",
+                   "reportingvalue" = "integer")
+
 taxa.raw <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_taxa.csv"),
                             data.table = FALSE,
-                            colClasses = col.class.vec) %>% 
-  clean_up() %>% 
+                            colClasses = col.class.vec,
+                            na.strings = "") %>% 
   mutate(sampledate = as.Date(sampledate))
 ```
 
-The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [@lacouture_phytoplankton_2006] (page 599) developed indices for data collected in the spring (March-May) and summer (July-September).
+The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [@LacouturePhytoplanktonindexbiotic2006] (page 599) developed indices for data collected in the spring (March-May) and summer (July-September).
 ```{r}
 bay.df <- taxa.raw %>% 
   filter(layer %in% c("ap", "wc")) %>% 
@@ -128,7 +46,6 @@ bay.df <- bay.df %>%
   ungroup()
 ```
 
-
 Only phytoplankton data ("ph") is retained for analysis. Additionally, some taxa were not identified to any useful taxonomic rank and were excluded from the analysis. 
 ```{r}
 bay.df <- bay.df %>% 
@@ -142,211 +59,21 @@ bay.df <- bay.df %>%
                            "hydrodictyon_reticulatum"))
 ```
 
-Non-numeric values and leading zeros were removed from the `nodccode` to make it possible to use this field to merge with data from the ITIS database.
-```{r}
-bay.df <- bay.df %>% 
-  mutate(nodc_num = gsub("[^0-9]", "", nodccode),
-         nodc_num = gsub("^[0]", "", nodc_num))
-```
-
-The `tsn_accepted` column from syn.df is used to identify all currently valid TSNs in the ITIS database. `nodc.df` is filtered to keep only nodc codes associated with valid TSN values.
-```{r}
-accepted.vec <- unique(syn.df$tsn_accepted)
-
-nodc.df <- nodc.df %>% 
-         filter(nodc_tsn %in% accepted.vec)
-```
-
-The ITIS NODC data frame is joined with the taxonomic counts. 
-If the reported TSN equals zero and the `nodc_tsn` is not `NA`, 
-then the `nodc_tsn` is used to fill in the `final_tsn` column; 
-otherwise, the reported `tsn` is used as the `final_tsn`. 
-NODC codes "7030526" and "7403100180" were not found in the ITIS 
-NODC codes. These NODC codes were specifically assigned the appropriate
-`final_tsn`.
-```{r}
-bay.df <- bay.df %>% 
-  left_join(nodc.df, by = c("nodc_num" = "nodccode")) %>% 
-  mutate(final_tsn = case_when(
-    !is.na(nodc_tsn) & tsn == 0 ~ as.integer(nodc_tsn),
-    stringr::str_detect(tsn, "bay") ~ as.integer(nodc_tsn),
-    TRUE ~ suppressWarnings(as.integer(tsn))),
-    final_tsn = case_when(
-      nodc_num == "7030526" ~ as.integer(3649),
-      nodc_num == "7403100180" ~ as.integer(5204),
-      TRUE ~ as.integer(final_tsn)
-    ))
-```
-
-As stated above, many NODC codes contained characters to identify 
-a taxa to a higher resolution than what is available in the NODC 
-database. More than 70 taxa were not found in the ITIS database. 
-Eight of these taxa appear to no longer be valid taxonomic names or 
-were due to data entry errors. 
-
-The ninth taxon, Didymocystis, was 
-assigned the wrong TSN. ITIS contains the genus Didymocystis under 
-the phylum platyhelminthes. This Didymocystis should be 
-classified under the division Chlorophyta; however, this genus 
-does not exist in the ITIS database. The TSN for the family 
-Didymocystis belongs to, Oocystaceae, was assigned and used to 
-obtain most of the taxonomic information for this taxon. Similarly,
-the tenth taxon, Lauterborniella elegantissima, is the name for an 
-insect of the family Chironomidae or algae of the family Scenedesmaceae. 
-We assume that reported taxon was algae but, again, there is no ITIS 
-TSN for this taxon. The TSN for the Scenedesmaceae was used to obtain the 
-majority of the taxonomic information. The genus and species names are 
-appended later in the script. The `final_tsn` is updated to link 
-to the appropriate taxonomic name in ITIS.
-```{r}
-bay.df <- bay.df %>% 
-  mutate(
-    final_tsn = case_when(
-      latinname == "navicula_notablis" ~ as.integer(4327),
-      latinname == "pleurosigma_macrum" ~ as.integer(4650),
-      latinname == "pleurosigma_obscurum" ~ as.integer(591383),
-      latinname == "polykrikos_hartmannii" ~ as.integer(331299),
-      latinname == "protoperidinium_aciculiderum" ~ as.integer(10329),
-      latinname == "protoperidinium_paulseni" ~ as.integer(3568),
-      latinname == "scrippsiella_favionese" ~ as.integer(10537),
-      latinname == "tetrastrum_caudatum" ~ as.integer(5691),
-      latinname == "didymocystis" ~ as.integer(5810),
-      latinname == "lauterborniella_elegantissima" ~ as.integer(6097),
-      latinname == "characium_sp." ~ as.integer(5756),
-      latinname == "cylindrospermopsis_sp." ~ as.integer(203689),
-      latinname == "chaetoceros_neogracilis" ~ as.integer(1004011),
-      latinname == "navicula_retusa_cancellata" ~ as.integer(1020372),
-      latinname == "karlodinium_micrum" ~ as.integer(180904),
-      latinname == "lagerheimia" ~ as.integer(6017),
-      latinname == "quadricoccus_euryhalinicus" ~ as.integer(957939),
-      latinname == "scrippsiella_precaria" ~ as.integer(10536),
-      latinname == "psuedosolenia_calcar-avis" ~ as.integer(970064),
-      latinname == "centronella" ~ as.integer(970064),
-      latinname == "amphidinium_tatrae" ~ as.integer(9997),
-      latinname == "navicula_lata" ~ as.integer(4450),
-      latinname == "nitzschia_vitrea_recta" ~ as.integer(5204),
-      latinname == "rhaphoneis_gemmifera" ~ as.integer(3145),
-      latinname == "delphineis_surirella" ~ as.integer(969978),
-      latinname == "navicula_annulata" ~ as.integer(3649),
-      latinname == "proboscia_alata_gracillima" ~ as.integer(610099),
-      latinname == "guinardia_striata" ~ as.integer(2921),
-      latinname == "guinardia_cylindrus" ~ as.integer(2921),
-      latinname == "aphanizomenon_issatschenkoi" ~ as.integer(1191),
-      latinname == "helicotheca_tamesis" ~ as.integer(590815),
-      latinname == "corethron_valdivae" ~ as.integer(2386),
-      latinname == "gonyaulax_conjuncta" ~ as.integer(10359),
-      latinname == "lioloma_delicatulum" ~ as.integer(573597),
-      latinname == "syracosphaera_histrica" ~ as.integer(2234),
-      latinname == "rhizosolenia_formosa" ~ as.integer(2879),
-      latinname == "proboscla_alata_curvirostris" ~ as.integer(610099),
-      latinname == "membraneis_challengeri" ~ as.integer(3648),
-      latinname == "chrysococcus_tesselatus" ~ as.integer(1751),
-      latinname == "rhoicosphenia_abbreviata" ~ as.integer(3633),
-      latinname == "protoperidinium_aciculiferum" ~ as.integer(10340),
-      latinname == "protoperidinium_fimbriatum" ~ as.integer(10340),
-      latinname == "licmophora_inflata" ~ as.integer(3155),
-      latinname == "biddulphia_reticulata" ~ as.integer(2678),
-      latinname == "caloneis_lepidula" ~ as.integer(4369),
-      latinname == "caloneis_trinodis" ~ as.integer(4369),
-      latinname == "amphiprora_cholnokyi" ~ as.integer(4674),
-      latinname == "navicula_interrupta" ~ as.integer(3649),
-      latinname == "cerataulus_radiatus" ~ as.integer(2709),
-      latinname == "gyrosigma_balticum_silimis" ~ as.integer(4623),
-      latinname == "dictyocha_siderea" ~ as.integer(1804),
-      TRUE ~ final_tsn
-    )
-  )
-```
-
-The ITIS synonym data is joined with the taxonomic counts to 
-identify TSN's that are no longer valid and to assign the valid TSN.
-```{r}
-bay.df <- bay.df %>% 
-  left_join(syn.df, by = c("final_tsn" = "tsn")) %>% 
-  mutate(
-    final_tsn = if_else(
-      is.na(tsn_accepted),
-      final_tsn,
-      tsn_accepted
-    ),
-    unique_id = paste(station, layer, samplenumber, sampledate, sep = "_")) %>% 
-  select(unique_id, everything())
-```
 
 #### Taxonomic Hierarchy
-In the ITIS database the taxonomic hierarchy is listed as a single string 
-of TSNs separated by hyphens ("-"). To utilize the taxonomic information 
-the string needs to separated into individual TSNs. The number of TSNs in the 
-strings is inconsistent, and therefore the string that contains the most hyphens 
-is used to identify the number of columns necessary to split all of the strings.
-`stringer::str_count()` is used to count the number of hyphens in each string, which 
-is identified in the column `hyphen_count`. The max `hyphen_count` plus one is used 
-to specify the necessary number of columns. `tidyr::separate()` is used to split 
-the string by the hyphen into multiple columns. Most strings will not fill all of 
-the columns. The remaining columns are filled with `NA`. The split TSNs are then 
-transformed to a long data format using `tidyr::gather()` and the `NAs` are removed.
-```{r }
-hier.long <- hier.df %>% 
-  filter(tsn %in% unique(bay.df$final_tsn)) %>% 
-  mutate(hyphen_count = stringr::str_count(hierarchy_string, '-')) %>% 
-  separate(hierarchy_string,
-           into = paste("tsn", seq(1:(max(.$hyphen_count) + 1)), sep = "_"),
-           extra = "drop",
-           fill = "right") %>% 
-  select(-parent_tsn, -level, -childrencount, -hyphen_count) %>% 
-  rename(final_tsn = tsn) %>% 
-  gather(col_name, tsn, -final_tsn, na.rm = TRUE) %>% 
-  select(-col_name) %>% 
-  mutate(tsn = as.numeric(tsn))
+
+Taxonomic hierarchy data obtained from ITIS ([ITIS Data]) is imported.
+```{r}
+hier.wide <- data.table::fread(file.path(project.dir, "data/itis/itis_hierarchy.csv"),
+                            data.table = FALSE,
+                            na.strings = "") %>% 
+  clean_up()
 ```
 
-`hier.vec` is a vector of all of the taxonomic ranks in ITIS sorted in the 
-correct order. This vector will be used to sort the the succeeding data 
-frame into the appropriate order.
+The taxonomic counts are joined with the taxonomic hierarchy data by the `final_tsn` columns. A unique identifier (`unique_id`) is created for each sampling event by concatenating `station`, `layer`, `samplenumber`, and `sampledate`.
 ```{r}
-hier.vec <- c("kingdom", "subkingdom", "infrakingdom", 
-              "superdivision", "division", "subdivision", "infradivision",
-              "superphylum", "phylum", "subphylum", "infraphylum", 
-              "superclass", "class", "subclass", "infraclass", 
-              "superorder", "order", "suborder", "infraorder", 
-              "section_animalia", "subsection_animalia", 
-              "superfamily", "family", "subfamily", 
-              "tribe", "subtribe", 
-              "genus", "subgenus", 
-              "section_botany", "subsection_botany",
-              "species", "subspecies", 
-              "variety", "form", "race", "stirp", "morph", "aberration", "unspecified")
-```
-
-`hier.long` only contains a list of TSNs, which are not informative. The data is 
-joined with the `taxa.df` data frame by the `tsn` column. `taxa.df` provides the 
-name associated with each TSN. Using `tidyr::complete()`, the data frame is expanded 
-so that each taxon rank present in `hier.vec` is represented for each taxon in this 
-data frame. Missing ranks will receive an `NA` in the `complete_name` column. 
-The `complete_name` column is duplicated and `tidyr::fill()` is used to fill all of the 
-`NA`'s with the proceeding non-`NA` value. A new column is created, `final_id`, 
-using `dplyr::mutate()` and `dplyr::last()` to extract the last taxonomic name for 
-each unique `final_tsn`. The data frame is then turned into a wide format  
-to provide a more intuitive view of the data. Each row represents information associated 
-with a single taxon and each column provides taxonomic names when available.
-```{r}
-hier.wide <- left_join(hier.long, taxa.df,  by = "tsn") %>% 
-  select(-tsn, -name_usage) %>% 
-  tidyr::complete(final_tsn, nesting(rank_name)) %>% 
-  mutate(rank_name = factor(rank_name, levels = hier.vec),
-         taxa_fill = complete_name) %>% 
-  arrange(final_tsn, rank_name) %>% 
-  fill(taxa_fill) %>% 
-  group_by(final_tsn) %>% 
-  mutate(final_id = last(taxa_fill)) %>% 
-  select(-taxa_fill) %>% 
-  spread(rank_name, complete_name) 
-```
-
-The taxonomic counts are joined with the taxonomic hierarchy data by
-the `final_tsn` columns.
-```{r}
-bay.df <- left_join(bay.df, hier.wide, by = "final_tsn")
+bay.df <- left_join(bay.df, hier.wide, by = "final_tsn") %>% 
+  mutate(unique_id = paste(station, layer, samplenumber, sampledate, sep = "_"))
 ```
 
 Some taxa require specific attention before they can be finalized.
@@ -385,7 +112,7 @@ bay.df <- bay.df %>%
 
 Remove all unnecessary objects from the environment.
 ```{r}
-rm(hier.df, hier.long, hier.wide, nodc.df, syn.df, taxa.df, hier.vec)
+rm(col.class.vec)
 ```
 
 

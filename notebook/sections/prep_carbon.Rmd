@@ -50,7 +50,7 @@ carbon.dups <- carbon.df %>%
   filter(count > 1)
 ```
 
-Taxa with duplicate carbon values: `r unique(carbon.dups$latinname)`. One of the "chaetoceros_wighami" `old_carbon` values is `NA`, and therefore, is excluded. The selected `old_carbon` values for "biddulphia" and "gymnodinium" appear to be the values used by [@lacouture_phytoplankton_2006].
+Taxa with duplicate carbon values: `r unique(carbon.dups$latinname)`. One of the "chaetoceros_wighami" `old_carbon` values is `NA`, and therefore, is excluded. The selected `old_carbon` values for "biddulphia" and "gymnodinium" appear to be the values used by [@LacouturePhytoplanktonindexbiotic2006].
 ```{r}
 carbon.df <- carbon.df %>% 
   filter(!(latinname == "chaetoceros_wighami" & is.na(old_carbon)),
