@@ -7,14 +7,14 @@ output:
     toc: yes
     toc_depth: '6'
     toc_float: yes
-bibliography: D:/ZSmith/Projects/PIBI/phyto/citations.bib
+bibliography: citations.bib
 link-citations: true
 ---
 
 `r Sys.Date()`
 
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=FALSE}
 evaluate <- TRUE
 cache.me <- TRUE
 run.cedr.acquisition <- FALSE
