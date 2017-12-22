@@ -5,7 +5,6 @@
 conn_postgres.R
 docs
 old
-notebook_script
 *.html
 *.png
 size_codes.csv
