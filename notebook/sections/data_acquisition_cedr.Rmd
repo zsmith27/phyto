@@ -58,6 +58,7 @@ phyto.df <- phyto.df %>%
   mutate(sampledate = as.Date(sampledate))
 ```
 
+Update TSNs (`final_tsn`) for reported taxa (`latinname`) known to be problematic. Most of these taxa are not in the ITIS database but an upstream taxonomic rank is found in ITIS. For example, the species, Navicula notablis, is not found in ITIS but the genus Navicula is present in ITIS; therefore, the TSN and hierarchy for Navicula is used to represent an incomplete hierarchy for Navicula notablis. For the purposes of this document, these incomplete hierarchies are good enough because the metrics calulated in the [Metric Calculation] section only requires taxonomic data for the ranks division, phylum, class, and two specific species. For future development of indices, these hierarchies will need to be completed either manually or find a more complete database (maybe Algaebase?).
 ```{r}
 phyto.df <- phyto.df %>% 
   mutate(
