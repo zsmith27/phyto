@@ -1,0 +1,86 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=run.itis.acquisition)
+```
+
+The [Integrated Taxonomic Information System (ITIS) database](https://itis.gov/downloads/index.html) is a useful resource for obtaining taxonomic hierarchy information, which is necessary to compute many of the phytoplankton community metrics. The majority of taxa observed in the Chesapeake Bay and its tributaries can be found in the database; however, there are a number of taxa that require edits or are missing entirely from the database (see [Download Phytoplankton Data]). The following script uses package __ritis__ to access the ITIS API and download the necessary taxonomic hierarchy information [@ChamberlainritisIntegratedTaxonomic2017]. The ITIS API and a simple way of querying the API with __ritis__ makes this document more robust and dynamic. Anyone interested party should be able to download this documents __R Markdown__ file from GitHub and run this script to access the ITIS database. As long as there are no changes to the API, this script can be used to access the ITIS data in subsequent years and will incorporate any subsequent changes to the ITIS database.
+
+It is not necessary to download the entire ITIS database, we only need the taxonomic hierarchy information for the phytoplankton reported in the CEDR database. Phytoplankton taxonomic count data obtained from CEDR ([Download Phytoplankton Data]) are imported. The unique list of reported taxa, represented by TSN, will be used to query the ITIS database.
+```{r}
+col.class.vec <- c("samplenumber" = "character",
+                   "tsn" = "character",
+                   "speccode" = "character",
+                   "reportingvalue" = "integer")
+
+bay.temp <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_taxa.csv"),
+                            data.table = FALSE,
+                            colClasses = col.class.vec)
+```
+
+The phytoplankton reported in the CEDR database are used to query the the ITIS database and extract all of the taxonomic information related to each reported taxon. The __ritis__ function, `usage()`, is used to check if there is any information for the specified taxon (`final_tsn`); if there is no information related to the specified taxon (`final_tsn`), then an empty data frame is returned. CEDR assigns taxa that are not found in the ITIS database a dumby TSN of zero, which does not exist in the ITIS database. Any query of the ITIS API with a TSN equal to zero will return an error; the return of an empty data frame prevents this error and can be used to check which TSNs were not found in the ITIS database (i.e., all taxonomic columns are filled with `NA`). If there is information related to the specified taxon (`final_tsn`), then `usage()` is used to check if the specified TSN is "accepted" or "valid". If the TSN is not "accepted" or "valid", then `ritis::accepted_names()` is used to updated the TSN that will be used to query the ITIS database (`tsn.accepted`). The __ritis__ function, `hierarchy_full()`, is then used to pull all of the hierarchy information upstream of the specified taxon (i.e. Kingdom to the specified taxons rank) and immediate children of the specified taxon (e.g. if the specified taxon represents Family-level, then the children might represent all Subfamilies below the specified taxon). For the purposes of this document, the immediate children of the specified taxon are not need and are filtered out of the data. The orginal reported TSN in CEDR (`org_tsn`), the accepted TSN (`final_tsn`), and the accepted taxonomic name of accepted TSN (`final_id`) are extracted as individual columns. These columns are used as a grouping feature to transform the data frame from a long format, where the taxonomic ranks are represented as a single column and taxonomic names are represented as a single column, to a wide format, where the taxonomic ranks represent the column names and the taxonomic names fill in each row respective to the appropriate taxonomic rank column. Finally, `clean_up()` is applied.
+```{r}
+
+hier.wide <- unique(bay.temp$final_tsn) %>% 
+  lapply(function(tsn.i) {
+ #print(tsn.i)
+  
+  if(ncol(usage(tsn.i)) == 0) return(data.frame(org_tsn = as.integer(tsn.i),
+                                                stringsAsFactors = FALSE))
+  if(!ritis::usage(tsn.i)$taxonUsageRating %in% c("accepted", "valid")) {
+    tsn.accepted <- ritis::accepted_names(as.integer(tsn.i))$acceptedTsn
+  } else {
+    tsn.accepted <- as.integer(tsn.i)
+  }
+  
+  full.df <- ritis::hierarchy_full(tsn.accepted) %>% 
+    select(rankname, taxonname, tsn) %>% 
+    slice(1:which(tsn == tsn.accepted)) %>% 
+    mutate(org_tsn = as.integer(tsn.i),
+           final_tsn = as.integer(tsn.accepted),
+           final_id = slice(., which(tsn == tsn.accepted))$taxonname)
+}) %>% 
+  bind_rows() %>% 
+  select(-tsn) %>% 
+  spread(rankname, taxonname) %>% 
+  clean_up()
+```
+
+A vector of column names is created to sort the columns. Not all of the names in `column.vec` are found in `hier.wide` and are filtered out in the last line. This is purposefully written to be more robust; future data acquisitions may contain different taxonomic ranks due to ITIS updates and this script will capture these changes.
+```{r}
+column.vec <- c("org_tsn", "final_tsn", "final_id",
+                "kingdom", "subkingdom", "infrakingdom", 
+                "superdivision", "division", "subdivision", "infradivision",
+                "superphylum", "phylum", "subphylum", "infraphylum", 
+                "superclass", "class", "subclass", "infraclass", 
+                "superorder", "order", "suborder", "infraorder", 
+                "superfamily", "family", "subfamily", 
+                "tribe", "subtribe", 
+                "genus", "subgenus", 
+                "species", "subspecies")
+
+column.vec <- column.vec[column.vec %in% names(hier.wide)]
+```
+
+The columns are sorted according to `column.vec`.
+```{r}
+hier.wide <- hier.wide[, column.vec]
+```
+
+Export the taxonomic hierarchy information (`hier.wide`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
+```{r}
+dir.create(file.path(project.dir, "data/itis"),
+           recursive = TRUE, showWarnings = FALSE)
+
+data.table::fwrite(hier.wide, file.path(rprojroot::find_rstudio_root_file(), "data/itis", "itis_hierarchy.csv"))
+```
+
+Remove data objects that are no longer useful to clean up the global environment.
+```{r}
+rm(col.class.vec, bay.temp, hier.wide, column.vec)
+```
+
+

@@ -1,0 +1,220 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=run.cedr.acquisition)
+```
+
+It is __NOT__ recommended that the following section of R-script be run with everytime this document is compiled. Running this script each time should not cause any errors but could lead to significant wait times associated with downloading the data from CEDR. The phytoplankton taxonomic counts and water quality data is relatively large and can take some time to download; therefore, this script should be run after your intial download from GitHUB, after a known update has been made, or after a signficant amount of time has passed from the intial data download (~6 months). 
+
+For those working with the Rmarkdown file, the object `run.cedr.acquisition` is a hidden object specified at the head of the *pibi_notebook.Rmd* created to indicate if the user would like to download data from CEDR (`run.cedr.acquisition <- TRUE`) or if user has already downloaded the data and wants to skip downloading the data again (`run.cedr.acquisition <- FALSE`). `run.cedr.acquisition` is then used in this section to signifiy if the code chunks should be executed or ignored using the `eval` option at the top of the code chunk; therefore, if `run.cedr.acquisition` is set to `TRUE`, then `eval=TRUE` and the code will be executed, and vice versa if`run.cedr.acquisition` is set to `FALSE`.  In the subsequent code chunks in this section, the CEDR data will be downloaded using the Chesapeake Bay Program CEDR API and the downloaded data will be saved into the R project directory. The data will be imported in subsequent sections.
+
+Create `url.root`, which represents the root of the CEDR API. All API calls will start with `url.root`. Additionally, use `Sys.Date()` to find todays, which will be used in the API query. This makes the following script more dynamic because if this script is run in 2 years, it will then include any data that was added to the CEDR database within those 2 years.
+```{r}
+url.root <- "http://datahub.chesapeakebay.net/api.JSON"
+todays.date <- format(Sys.Date(), "%m-%d-%Y")
+```
+
+#### Download Station Vector
+
+Create a vector (`station.vec`) of stations that contain phytoplankton data. The vector will be used to query data from from the CEDR API in subsequent code chunks.
+```{r}
+station.vec <- file.path(url.root,
+                       "LivingResources",
+                       "TidalPlankton",
+                       "Reported",
+                       "1-01-1970",
+                       todays.date,
+                       "17",
+                       "Station") %>% 
+  fromJSON() %>% 
+  pull(unique(MonitoringLocationId))
+```
+
+#### Download Phytoplankton Data
+
+Download all of the phytoplankton data from the CEDR API.
+```{r}
+phyto.df <- file.path(url.root,
+                      "LivingResources",
+                      "TidalPlankton",
+                      "Reported",
+                      "1-01-1970",
+                      todays.date, 
+                      "17",
+                      "Station",
+                      paste(station.vec, collapse = ", ")) %>%
+  fromJSON() %>% 
+  clean_up()
+```
+
+Subset`phyto.df` to only represent data collected from the above pycnocline layer or in the water column (`Layer %in% c("AP", "WC)`) and rows that contain taxonomic counts (`!is.na(ReportingValue)`). Also, convert `SampleDate` to class date, which will be used to limit the water quality download query [Water Quality Data].
+```{r}
+phyto.df <- phyto.df %>% 
+  filter(layer %in% c("ap", "wc"),
+         !is.na(reportingvalue)) %>% 
+  mutate(sampledate = as.Date(sampledate))
+```
+
+```{r}
+phyto.df <- phyto.df %>% 
+  mutate(
+    tsn = as.integer(tsn),
+    final_tsn = case_when(
+      latinname == "navicula_notablis" ~ as.integer(4327),
+      latinname == "pleurosigma_macrum" ~ as.integer(4650),
+      latinname == "pleurosigma_obscurum" ~ as.integer(591383),
+      latinname == "polykrikos_hartmannii" ~ as.integer(331299),
+      latinname == "protoperidinium_aciculiderum" ~ as.integer(10329),
+      latinname == "protoperidinium_paulseni" ~ as.integer(3568),
+      latinname == "scrippsiella_favionese" ~ as.integer(10537),
+      latinname == "tetrastrum_caudatum" ~ as.integer(5691),
+      latinname == "didymocystis" ~ as.integer(5810),
+      latinname == "lauterborniella_elegantissima" ~ as.integer(6097),
+      latinname == "characium_sp." ~ as.integer(5756),
+      latinname == "cylindrospermopsis_sp." ~ as.integer(203689),
+      latinname == "chaetoceros_neogracilis" ~ as.integer(1004011),
+      latinname == "navicula_retusa_cancellata" ~ as.integer(1020372),
+      latinname == "karlodinium_micrum" ~ as.integer(180904),
+      latinname == "lagerheimia" ~ as.integer(6017),
+      latinname == "quadricoccus_euryhalinicus" ~ as.integer(957939),
+      latinname == "scrippsiella_precaria" ~ as.integer(10536),
+      latinname == "psuedosolenia_calcar-avis" ~ as.integer(970064),
+      latinname == "centronella" ~ as.integer(970064),
+      latinname == "amphidinium_tatrae" ~ as.integer(9997),
+      latinname == "navicula_lata" ~ as.integer(4450),
+      latinname == "nitzschia_vitrea_recta" ~ as.integer(5204),
+      latinname == "rhaphoneis_gemmifera" ~ as.integer(3145),
+      latinname == "delphineis_surirella" ~ as.integer(969978),
+      latinname == "navicula_annulata" ~ as.integer(3649),
+      latinname == "proboscia_alata_gracillima" ~ as.integer(610099),
+      latinname == "guinardia_striata" ~ as.integer(2921),
+      latinname == "guinardia_cylindrus" ~ as.integer(2921),
+      latinname == "aphanizomenon_issatschenkoi" ~ as.integer(1191),
+      latinname == "helicotheca_tamesis" ~ as.integer(590815),
+      latinname == "corethron_valdivae" ~ as.integer(2386),
+      latinname == "gonyaulax_conjuncta" ~ as.integer(10359),
+      latinname == "lioloma_delicatulum" ~ as.integer(573597),
+      latinname == "syracosphaera_histrica" ~ as.integer(2234),
+      latinname == "rhizosolenia_formosa" ~ as.integer(2879),
+      latinname == "proboscla_alata_curvirostris" ~ as.integer(610099),
+      latinname == "membraneis_challengeri" ~ as.integer(3648),
+      latinname == "chrysococcus_tesselatus" ~ as.integer(1751),
+      latinname == "rhoicosphenia_abbreviata" ~ as.integer(3633),
+      latinname == "protoperidinium_aciculiferum" ~ as.integer(10340),
+      latinname == "protoperidinium_fimbriatum" ~ as.integer(10340),
+      latinname == "licmophora_inflata" ~ as.integer(3155),
+      latinname == "biddulphia_reticulata" ~ as.integer(2678),
+      latinname == "caloneis_lepidula" ~ as.integer(4369),
+      latinname == "caloneis_trinodis" ~ as.integer(4369),
+      latinname == "amphiprora_cholnokyi" ~ as.integer(4674),
+      latinname == "navicula_interrupta" ~ as.integer(3649),
+      latinname == "cerataulus_radiatus" ~ as.integer(2709),
+      latinname == "gyrosigma_balticum_silimis" ~ as.integer(4623),
+      latinname == "dictyocha_siderea" ~ as.integer(1804),
+      latinname == "odontella_alternans" ~ as.integer(573604),
+      latinname == "nitzschia_vitrea_salinarum" ~ as.integer(5204),
+      latinname == "proboscla_alata_indica" ~ as.integer(610099),
+      latinname == "attheya_decora" ~ as.integer(2876),
+      latinname == "synedra_closterioides" ~ as.integer(970065),
+      latinname == "trinacria_regina" ~ as.integer(2747),
+      latinname == "chattonella" ~ as.integer(969917),
+      latinname == "chattonella_subsalsa" ~ as.integer(969917),
+      latinname == "heterosigma_akashiwo" ~ as.integer(969917),
+      latinname == "vibrio_fisheri" ~ as.integer(959178),
+      TRUE ~ as.integer(tsn)
+    )
+  )
+```
+
+
+Export the phytoplankton taxonomic counts (`phyto.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `project.dir`(created using `rprojroot::find_rstudio_root_file()` in [Getting Started]) the necessary folder structure in the project directory will be created, if it does not already exist.
+```{r}
+dir.create(file.path(project.dir, "data/phytoplankton"),
+           recursive = TRUE, showWarnings = FALSE)
+
+data.table::fwrite(phyto.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_taxa.csv"))
+```
+
+#### Download Monitoring Event
+
+Download all of the monitoring event data associated with the collection of phytoplankton from the CEDR API.
+```{r}
+event.df <- file.path(url.root,
+                      "LivingResources",
+                      "TidalPlankton",
+                      "MonitorEvent",
+                      "1-01-1970",
+                      todays.date, 
+                      "17",
+                      "Station",
+                      paste(station.vec, collapse = ", ")) %>%
+  fromJSON() %>% 
+  clean_up()
+```
+
+Export the phytoplankton event data (`event.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
+```{r}
+dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton"),
+           recursive = TRUE, showWarnings = FALSE)
+
+data.table::fwrite(event.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_event.csv"))
+```
+
+#### Download Station Information
+
+Download all of the station data associated with the collection of phytoplankton from the CEDR API.
+```{r}
+station.df <- file.path(url.root,
+                        "LivingResources",
+                        "TidalPlankton",
+                        "Station",
+                        "station",
+                        paste(station.vec, collapse = ", ")) %>%
+  fromJSON() %>% 
+  clean_up()
+```
+
+Export the phytoplankton station data (`station.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
+```{r}
+dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton"),
+           recursive = TRUE, showWarnings = FALSE)
+
+data.table::fwrite(station.df, file.path(rprojroot::find_rstudio_root_file(), "data/phytoplankton", "cedr_phyto_station.csv"))
+```
+
+#### Download Water Quality Data
+
+Download chlorophyll a, dissolved organic carbon, and pheophytin water quality data collected from the same stations as the phytoplankton data. The minimum and maximum dates found in the phytoplankton taxonomic count data (`phyto.df$SampleDate`) are used to limit the water quality query to reduce the amount of unwanted data and to speed up the download. Three days is subtracted from the minimum date and three days are added to the maximum date becuase water quality data collected within ± 3 day window (see [3-Day Window] for more details).
+```{r}
+wq.df <- file.path(url.root,
+                   "WaterQuality",
+                   "WaterQuality",
+                   format(min(phyto.df$sampledate) - days(3), "%m-%d-%Y"),
+                   format(max(phyto.df$sampledate) + days(3), "%m-%d-%Y"), 
+                   "6",
+                   "7,16,23,24",
+                   "station",
+                   paste(station.vec, collapse = ", "),
+                   "21,34,74") %>% 
+  fromJSON() %>% 
+  clean_up()
+```
+
+Export the water quality data (`wq.df`) as a CSV file to "data" folder in this project directory. Using a combination of `dir.create()`, `file.path()`, and `rprojroot::find_rstudio_root_file()` the necessary folder structure in the project directory will be created, if it does not already exist.
+```{r}
+dir.create(file.path(rprojroot::find_rstudio_root_file(), "data/water_quality"),
+           recursive = TRUE, showWarnings = FALSE)
+
+data.table::fwrite(wq.df, file.path(rprojroot::find_rstudio_root_file(), "data/water_quality", "cedr_wq.csv"))
+```
+
+Remove data objects that are no longer useful to clean up the global environment.
+```{r}
+rm(run.cedr.acquisition, url.root, todays.date, station.vec, phyto.df, event.df, station.df, wq.df)
+```
+
+
+
