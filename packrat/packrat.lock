@@ -143,6 +143,13 @@ Version: 1.1.0
 Hash: 3375b0f6df680aa0708ec0dfe0334c4d
 Requires: DBI, R6, assertthat, dplyr, glue, purrr, rlang, tibble
 
+Package: devtools
+Source: CRAN
+Version: 1.13.4
+Hash: 80a77b22f641002c7ce0343baeaee300
+Requires: digest, git2r, httr, jsonlite, memoise, rstudioapi, whisker,
+    withr
+
 Package: dichromat
 Source: CRAN
 Version: 2.0-0
@@ -202,6 +209,11 @@ Source: CRAN
 Version: 0.7.0
 Hash: 11684d110be5aff145c3e85839290406
 Requires: Rcpp, ggplot2, scales
+
+Package: git2r
+Source: CRAN
+Version: 0.20.0
+Hash: 11747e2b4c91ecd101150d7f44027670
 
 Package: glue
 Source: CRAN
@@ -321,15 +333,26 @@ Version: 0.8
 Hash: 045d7c594d503b41f1c28946d076c8aa
 Requires: mime
 
+Package: memoise
+Source: CRAN
+Version: 1.1.0
+Hash: 410fcd334bc626db100237cc1370f2e9
+Requires: digest
+
 Package: mime
 Source: CRAN
 Version: 0.5
 Hash: 463550cf44fb6f0a2359368f42eebe62
 
 Package: mmir
-Source: CRAN
+Source: github
 Version: 0.0.0.9000
-Hash: 2743792bd8e4ff6d6f3a5b2de765b267
+Hash: 77a1c746e932bce76050567112b7f40c
+Requires: rlang
+GithubRepo: mmir
+GithubUsername: zsmith27
+GithubRef: master
+GithubSha1: 598b9cb5a61f41f47c41fb2e088a595b0c5e1f82
 
 Package: mnormt
 Source: CRAN
@@ -443,8 +466,8 @@ Requires: crul, data.table, jsonlite, solrium, tibble
 
 Package: rlang
 Source: CRAN
-Version: 0.1.4
-Hash: fef2abdadbb8db061b9d37e7ca5cb0b4
+Version: 0.1.6
+Hash: 8eb4b2dce38b8f663cb9364b28eaa76b
 
 Package: rmarkdown
 Source: CRAN
@@ -595,6 +618,11 @@ Package: whisker
 Source: CRAN
 Version: 0.3-2
 Hash: 803d662762e532705c2c066a82d066e7
+
+Package: withr
+Source: CRAN
+Version: 2.1.1
+Hash: a86856ae0b4a7c3daf9a3ef0097a403b
 
 Package: xml2
 Source: CRAN
