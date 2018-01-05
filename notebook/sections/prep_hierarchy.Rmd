@@ -72,7 +72,7 @@ hier.wide <- data.table::fread(file.path(project.dir, "data/itis/itis_hierarchy.
 
 The taxonomic counts are joined with the taxonomic hierarchy data by the `final_tsn` columns. A unique identifier (`unique_id`) is created for each sampling event by concatenating `station`, `layer`, `samplenumber`, and `sampledate`.
 ```{r}
-bay.df <- left_join(bay.df, hier.wide, by = "final_tsn") %>% 
+bay.df <- left_join(bay.df, hier.wide, by = c("final_tsn" = "org_tsn")) %>% 
   mutate(unique_id = paste(station, layer, samplenumber, sampledate, sep = "_"))
 ```
 
@@ -115,4 +115,8 @@ Remove all unnecessary objects from the environment.
 rm(col.class.vec)
 ```
 
+```{r}
+test <- bay.df %>% 
+  filter(is.na(kingdom))
+```
 

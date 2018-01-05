@@ -49,7 +49,7 @@ hier.wide <- data.table::fread(file.path(project.dir, "data/itis/itis_hierarchy.
   clean_up()
 
 ## ------------------------------------------------------------------------
-bay.df <- left_join(bay.df, hier.wide, by = "final_tsn") %>% 
+bay.df <- left_join(bay.df, hier.wide, by = c("final_tsn" = "org_tsn")) %>% 
   mutate(unique_id = paste(station, layer, samplenumber, sampledate, sep = "_"))
 
 ## ------------------------------------------------------------------------
@@ -86,4 +86,8 @@ bay.df <- bay.df %>%
 
 ## ------------------------------------------------------------------------
 rm(col.class.vec)
+
+## ------------------------------------------------------------------------
+test <- bay.df %>% 
+  filter(is.na(kingdom))
 

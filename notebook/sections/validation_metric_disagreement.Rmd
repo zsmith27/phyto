@@ -67,6 +67,8 @@ diff.ibi <- diff.df %>%
   arrange(desc(ibi_diff))
 ```
 
+##### IBI Scores
+
 If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
 ```{r , fig.width = 8, fig.height = 6}
 if (nrow(diff.ibi) > 0) {
@@ -78,6 +80,8 @@ if (nrow(diff.ibi) > 0) {
     coord_flip() 
 }
 ```
+
+##### Metric Scores
 
 Focus just on scores that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_score_value`), and this documents scored values (`score`). Find the absolute difference (`score_diff`) between Jacqueline M. Johnson's scores (`old_score_value`) and this documents scored values (`score`). Only rows where the scores disagree (`score_diff > 0`) are retained.
 ```{r}
@@ -91,8 +95,15 @@ diff.score <- diff.df %>%
 If there is at least one metric score disagreement, plot the counts of score disagreement for each metric.
 ```{r, fig.width = 8, fig.height = 3}
 if (nrow(diff.score) > 0) {
-  ggplot(diff.score, aes(metric, fill = metric)) +
-    geom_bar() +
+  count.diff <- diff.score %>% 
+    group_by(metric) %>% 
+    summarize(count = n()) %>% 
+    ungroup() %>% 
+    arrange(count) %>% 
+    mutate(metric = factor(metric, levels = metric))
+  
+  ggplot(count.diff, aes(metric, count, fill = metric)) +
+    geom_bar(stat = "identity") +
     coord_flip()
 }
 ```
@@ -100,7 +111,9 @@ if (nrow(diff.score) > 0) {
 If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
 ```{r, fig.width = 8, fig.height = 6}
 if (nrow(diff.score) > 0) {
-  ggplot(diff.score, aes(metric, fill = metric)) +
+  diff.score %>% 
+    mutate(metric = factor(metric, levels = levels(count.diff$metric))) %>% 
+  ggplot(aes(metric, fill = metric)) +
     geom_bar() +
     coord_flip() +
     facet_wrap(~index, ncol = 4) +
@@ -122,7 +135,10 @@ diff.score.source <- diff.score %>%
 If there is at least one metric score disagreement for `diff.score.source`, plot the counts of score disagreement for each metric by source (`source`) and index (`index`).
 ```{r, fig.width = 8, fig.height = 25}
 if (nrow(diff.score.source) > 0) {
-  ggplot(diff.score.source, aes(metric, count, fill = metric)) +
+  diff.score.source %>% 
+    mutate(metric = factor(metric, levels = levels(count.diff$metric))) %>% 
+    filter(!is.na(metric)) %>% 
+  ggplot(aes(metric, count, fill = metric)) +
     geom_bar(stat = "identity") +
     coord_flip() +
     facet_wrap(~index + source, ncol = 2) +
@@ -131,16 +147,17 @@ if (nrow(diff.score.source) > 0) {
 }
 ```
 
+##### Metric Values
 
-
+Focus just on metric values that differ, which makes it easier to identify errors in this documents code. Subset `diff.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_metric_value`), and this documents scored values (`value`). Find the absolute difference (`metric_diff`) between Jacqueline M. Johnson's scores (`old_metric_value`) and this documents scored values (`value`). Only rows where the scores disagree by more than two (`metric_diff > 2`) are retained. Two was an arbitrary selection made to provide a small buffer to allow for rounding error.
 ```{r}
 diff.metric <- diff.df %>% 
   select(unique_id, metric, index, value, old_metric_value, metric_diff) %>% 
-  filter(metric_diff > 2 | metric_diff < -2)
+  mutate(metric_diff = abs(metric_diff)) %>% 
+  filter(metric_diff > 2)
 ```
 
-
-
+If there is at least one metric value disagreement, plot the counts of metric value disagreements for each metric.
 ```{r, fig.width = 8, fig.height = 3}
 if (nrow(diff.metric) > 0) {
   diff.metric %>% 

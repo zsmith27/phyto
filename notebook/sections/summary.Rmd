@@ -6,7 +6,7 @@ output: html_document
 This document aims to provide R-scripts to calculate the Chesapeake Bay Phytoplankton indices described by [@LacouturePhytoplanktonindexbiotic2006]. In the [Validation] section of this document, an independent data source produced by Jacqueline M. Johnson is used QA/QC the processes outlined in this document. R functions developed to for metric scoring ([Metric Score Disagreement]), IBI scoring ([IBI Value Disagreement]), and IBI rating ([Rating Disagreement]) for the most part appear to be working correctly ([IBI Value, IBI Rating, Metric Scoring Disagreements]). However, before you dive into the documentation, I would like to direct your attention to a number of discrepancies that were identified in the [Metric Disagreement] section. The [Overview of Descrepancies] subsection is a good starting point because it summarizes the descrepancies by index, size of the descrepancy, metric, and data source. Some of these descrepancies are very small when metric values are compared and could be a result of round differences. To reduce the impact of minor changes metric scores are compared instead of metric values. Metric scores bin the data into four categories: 1, 3, 5, or NA. Therefore, if the metric score in this document differs from Jacqueline M. Johnson's metric score, the metric value has most likely changed quite a bit.
 
 
-1. The metric with the greatest number of descrepancies is Pheophytin. 
+1. The metric with the greatest number of scoring descrepancies is Pheophytin. 
     + This is an issue for all indices and both data sources.
         + MSU/Pearl Pheophytin values are incorrect more frequently.
     + Potential reason(s) for issue:
@@ -17,7 +17,20 @@ This document aims to provide R-scripts to calculate the Chesapeake Bay Phytopla
             + Jacqueline M. Johnson may have had a more complicated procedure then outlined in [Prepare Water Quality Data].
             + Additional data may have been acquired since the Jacqueline M. Johnson last calculated these values.
 
-2. 
+2. The metric with the second greatest number of scoring descrepancies is total_phyto_biomass_chla_ratio.
+    + This is an issue for all indices that incorporate this metric and both data sources.
+        + MSU/Pearl values are incorrect more frequently.
+    + Potential reason(s) for issue:
+        + Calculation of mean chla values (See reasons discussed for Pheophytine above).
+        + Jacqueline M. Johnson may have had a different procedure for calculating biomass then what is outlined in [Prepare Carbon Assignments].
+            + This seems unlikely becuase there are many instances where the total_phyto_biomass_chla_ratio values do agree. Maybe Jacqueline M. Johnson used a different carbon table or maybe there are a select set of taxa that require modified biomass calculations?
+
+3. The metric with the third greatest number of scoring descrepancies is doc.
+    + See reasons discussed for Pheophytine above.
+
+4. The remaining biomass metrics scoring descrepancies are most likely due to an incorrect calculation of biomass (see total_phyto_biomass_chla_ratio discussed above).
+    + Could be the result of differences between the assigned taxonomic hierarchy in this document and the hierarchy assigned by Jacqueline M. Johnson.
+        + ITIS was used to aquire the majority of taxonomic hierarchy information for the reported phytoplankton taxa (see [ITIS Data] and [Prepare Taxonomic Hierarchy]). I believe ITIS was used by Jacqueline M. Johnson as well becuase the Chesapeake Bay Program Incorporates TSNs (Taxonomic Serial Number assigned by ITIS) in most of their taxonomic databases. Taxonomic updates to ITIS between the assessments could cause some of these differences.
 
 There are several probable sources for these discrepancies: 
 
