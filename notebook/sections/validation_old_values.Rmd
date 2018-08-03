@@ -59,7 +59,7 @@ old.score <- old.sub %>%
   ungroup()
 ```
 
-`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words each row represents a unique events (`unique_id`) metric value (`old_metric_value`) and score (`old_score_value`).
+`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words each row represents a unique event (`unique_id`), metric value (`old_metric_value`), and score (`old_score_value`).
 ```{r}
 old.df <- full_join(old.metrics, old.score,
                     by = c("station", "sample_date", "season",

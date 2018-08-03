@@ -41,8 +41,8 @@ carbon.dups <- carbon.df %>%
 ## ------------------------------------------------------------------------
 carbon.df <- carbon.df %>% 
   filter(!(latinname == "chaetoceros_wighami" & is.na(old_carbon)),
-         !(latinname == "biddulphia" & old_carbon == 7899.50), # %>%  #,
-         !(latinname == "gymnodinium" & old_carbon == 848))
+         !(latinname == "biddulphia" & old_carbon == 7899.50),
+         !(latinname == "gymnodinium" & old_carbon == 848)) # %>% 
 #  mutate(size = case_when(
 #    is.na(size) & latinname == "gymnodinium" & old_carbon == 848 ~ "msu",
 #    is.na(size) & latinname == "gymnodinium" & old_carbon == 43.900 ~ "odu",
@@ -103,5 +103,5 @@ bay.df <- left_join(bay.df, partial.match.df, by = c("latinname", "size")) %>%
 
 ## ------------------------------------------------------------------------
 bay.df <- left_join(bay.df, carbon.df, by = c("latinname", "size")) %>% 
-  mutate(biomass = reportingvalue * old_carbon / 10^6)
+  mutate(biomass = reportingvalue * old_carbon / 10 ^ 6)
 

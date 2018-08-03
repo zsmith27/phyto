@@ -2,10 +2,13 @@
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 
 ## ------------------------------------------------------------------------
-join.df <- left_join(ratings.df, old.df, by = c("station", "date", "season", "salzone",  "metric")) %>% 
+join.df <- left_join(ratings.df, old.df,
+                     by = c("station", "date", "season",
+                            "salzone",  "metric")) %>% 
   filter(date <= max(old.df$date)) %>% 
   unite(index, season, salzone) %>% 
-  left_join(unique(bay.df[, c("unique_id", "source")]), by = "unique_id") %>% 
+  left_join(unique(bay.df[, c("unique_id", "source")]),
+            by = "unique_id") %>% 
   mutate(index = factor(index),
          metric = factor(metric),
          source = factor(source))
@@ -48,7 +51,9 @@ diff.ibi <- diff.df %>%
 
 ## ---- fig.width = 8, fig.height = 6--------------------------------------
 if (nrow(diff.ibi) > 0) {
-  ggplot(diff.ibi, aes(index, fill = index)) +
+  diff.ibi %>% 
+    rename(Index = index) %>% 
+  ggplot(aes(Index, fill = Index)) +
     geom_bar() +
     facet_wrap(~ disagree_bin) + 
     xlab("Index") +
@@ -65,19 +70,32 @@ diff.score <- diff.df %>%
 
 ## ---- fig.width = 8, fig.height = 3--------------------------------------
 if (nrow(diff.score) > 0) {
-  ggplot(diff.score, aes(metric, fill = metric)) +
-    geom_bar() +
+  count.diff <- diff.score %>% 
+    group_by(metric) %>% 
+    summarize(count = n()) %>% 
+    ungroup() %>% 
+    arrange(count) %>% 
+    mutate(metric = factor(metric, levels = metric)) %>% 
+    rename(Metric = metric,
+           Count = count)
+  
+  ggplot(count.diff, aes(Metric, Count, fill = Metric)) +
+    geom_bar(stat = "identity") +
     coord_flip()
 }
 
 ## ---- fig.width = 8, fig.height = 6--------------------------------------
 if (nrow(diff.score) > 0) {
-  ggplot(diff.score, aes(metric, fill = metric)) +
+  diff.score %>% 
+    mutate(metric = factor(metric, levels = levels(count.diff$Metric))) %>% 
+    rename(Metric = "metric") %>% 
+  ggplot(aes(Metric, fill = Metric)) +
     geom_bar() +
     coord_flip() +
     facet_wrap(~index, ncol = 4) +
     theme(legend.position = "bottom") +
-    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE)) +
+    ylab("Count")
 }
 
 ## ------------------------------------------------------------------------
@@ -90,7 +108,12 @@ diff.score.source <- diff.score %>%
 
 ## ---- fig.width = 8, fig.height = 25-------------------------------------
 if (nrow(diff.score.source) > 0) {
-  ggplot(diff.score.source, aes(metric, count, fill = metric)) +
+  diff.score.source %>% 
+    mutate(metric = factor(metric, levels = levels(count.diff$Metric))) %>% 
+    filter(!is.na(metric)) %>% 
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip() +
     facet_wrap(~index + source, ncol = 2) +
@@ -101,7 +124,8 @@ if (nrow(diff.score.source) > 0) {
 ## ------------------------------------------------------------------------
 diff.metric <- diff.df %>% 
   select(unique_id, metric, index, value, old_metric_value, metric_diff) %>% 
-  filter(metric_diff > 2 | metric_diff < -2)
+  mutate(metric_diff = abs(metric_diff)) %>% 
+  filter(metric_diff > 2)
 
 ## ---- fig.width = 8, fig.height = 3--------------------------------------
 if (nrow(diff.metric) > 0) {
@@ -111,8 +135,21 @@ if (nrow(diff.metric) > 0) {
     ungroup() %>% 
     arrange(count) %>% 
     mutate(metric = factor(metric, levels = metric)) %>% 
-  ggplot(aes(metric, count, fill = metric)) +
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip()
+}
+
+## ---- fig.width = 8, fig.height = 15-------------------------------------
+if (nrow(diff.metric) > 0) {
+  diff.metric %>%
+  ggplot(aes(old_metric_value, value, fill = metric, color = metric)) +
+    geom_point() +
+    geom_abline(intercept = 0, slope = 1) +
+    facet_wrap(~metric, ncol = 1, scales = "free") +
+    xlab("Jacqueline M. Johnson Values") +
+    ylab("This Documents Values")
 }
 

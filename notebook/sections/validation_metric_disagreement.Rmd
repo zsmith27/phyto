@@ -10,14 +10,17 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ### Metric Disagreement
 
 
-This section compares the values found in this document to the values found by Jacqueline M. Johnson. The previous section was good for identifying issues related to scoring the metrics. This section identifies issues related to the metric values. The discrepancies found here most likely do not have to deal with the formula used to calculate the metrics but probably stem from differences in how the taxonomic counts are prepared.
+This section compares the values found in this document to the values found by Jacqueline M. Johnson. The previous section was good for identifying issues related to scoring the metrics. This section identifies issues related to the metric values. The discrepancies found here most likely do not reflect the formula used to calculate the metrics but probably stem from differences in how the taxonomic counts are prepared ([Prepare Taxonomic Hierarchy] and [Prepare Carbon Assignments]).
 
-Values from this document (`ratings.df`) are merged with Jacqueline M. Johnson's values (`old.df`).  Season (`season`) and salinity zone (`salzone`) are combined (`unite()`) to represent phytoplankton index names. Metrics (`metric`), indices (`index`), and data sources (`source`) are converted to factors to make them easier to plot in subsequent code chunks.
+Values from this document (`ratings.df`) are merged with Jacqueline M. Johnson's values (`old.df`).  Season (`season`) and salinity zone (`salzone`) are combined (`tidyr::unite()`) to represent phytoplankton index names. Metrics (`metric`), indices (`index`), and data sources (`source`) are converted to factors to make them easier to plot in subsequent code chunks.
 ```{r}
-join.df <- left_join(ratings.df, old.df, by = c("station", "date", "season", "salzone",  "metric")) %>% 
+join.df <- left_join(ratings.df, old.df,
+                     by = c("station", "date", "season",
+                            "salzone",  "metric")) %>% 
   filter(date <= max(old.df$date)) %>% 
   unite(index, season, salzone) %>% 
-  left_join(unique(bay.df[, c("unique_id", "source")]), by = "unique_id") %>% 
+  left_join(unique(bay.df[, c("unique_id", "source")]),
+            by = "unique_id") %>% 
   mutate(index = factor(index),
          metric = factor(metric),
          source = factor(source))
@@ -72,7 +75,9 @@ diff.ibi <- diff.df %>%
 If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
 ```{r , fig.width = 8, fig.height = 6}
 if (nrow(diff.ibi) > 0) {
-  ggplot(diff.ibi, aes(index, fill = index)) +
+  diff.ibi %>% 
+    rename(Index = index) %>% 
+  ggplot(aes(Index, fill = Index)) +
     geom_bar() +
     facet_wrap(~ disagree_bin) + 
     xlab("Index") +
@@ -100,9 +105,11 @@ if (nrow(diff.score) > 0) {
     summarize(count = n()) %>% 
     ungroup() %>% 
     arrange(count) %>% 
-    mutate(metric = factor(metric, levels = metric))
+    mutate(metric = factor(metric, levels = metric)) %>% 
+    rename(Metric = metric,
+           Count = count)
   
-  ggplot(count.diff, aes(metric, count, fill = metric)) +
+  ggplot(count.diff, aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip()
 }
@@ -112,13 +119,15 @@ If there is at least one metric score disagreement, plot the counts of score dis
 ```{r, fig.width = 8, fig.height = 6}
 if (nrow(diff.score) > 0) {
   diff.score %>% 
-    mutate(metric = factor(metric, levels = levels(count.diff$metric))) %>% 
-  ggplot(aes(metric, fill = metric)) +
+    mutate(metric = factor(metric, levels = levels(count.diff$Metric))) %>% 
+    rename(Metric = "metric") %>% 
+  ggplot(aes(Metric, fill = Metric)) +
     geom_bar() +
     coord_flip() +
     facet_wrap(~index, ncol = 4) +
     theme(legend.position = "bottom") +
-    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE)) +
+    ylab("Count")
 }
 ```
 
@@ -136,9 +145,11 @@ If there is at least one metric score disagreement for `diff.score.source`, plot
 ```{r, fig.width = 8, fig.height = 25}
 if (nrow(diff.score.source) > 0) {
   diff.score.source %>% 
-    mutate(metric = factor(metric, levels = levels(count.diff$metric))) %>% 
+    mutate(metric = factor(metric, levels = levels(count.diff$Metric))) %>% 
     filter(!is.na(metric)) %>% 
-  ggplot(aes(metric, count, fill = metric)) +
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip() +
     facet_wrap(~index + source, ncol = 2) +
@@ -149,7 +160,7 @@ if (nrow(diff.score.source) > 0) {
 
 ##### Metric Values
 
-Focus just on metric values that differ, which makes it easier to identify errors in this documents code. Subset `diff.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_metric_value`), and this documents scored values (`value`). Find the absolute difference (`metric_diff`) between Jacqueline M. Johnson's scores (`old_metric_value`) and this documents scored values (`value`). Only rows where the scores disagree by more than two (`metric_diff > 2`) are retained. Two was an arbitrary selection made to provide a small buffer to allow for rounding error.
+Focus just on metric values that differ, which makes it easier to identify errors in this documents code. Subset `diff.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_metric_value`), and this documents scored values (`value`). Find the absolute difference (`metric_diff`) between Jacqueline M. Johnson's scores (`old_metric_value`) and this documents scored values (`value`). Only rows where the scores disagree by more than two (`metric_diff > 2`) are retained. Two was arbitrary selected to represent a small buffer to account for rounding error.
 ```{r}
 diff.metric <- diff.df %>% 
   select(unique_id, metric, index, value, old_metric_value, metric_diff) %>% 
@@ -166,9 +177,45 @@ if (nrow(diff.metric) > 0) {
     ungroup() %>% 
     arrange(count) %>% 
     mutate(metric = factor(metric, levels = metric)) %>% 
-  ggplot(aes(metric, count, fill = metric)) +
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip()
 }
 ```
+If there is at least one metric value disagreement, generate a scatter plot comparing the metric values reported by Jacqueline M. Johnson (x-axis) to the metric values calculated in this document (y-axis). A black one-to-one line is drawn to show where the points should fall.
+```{r, fig.width = 8, fig.height = 15}
+if (nrow(diff.metric) > 0) {
+  diff.metric %>%
+  ggplot(aes(old_metric_value, value, fill = metric, color = metric)) +
+    geom_point() +
+    geom_abline(intercept = 0, slope = 1) +
+    facet_wrap(~metric, ncol = 1, scales = "free") +
+    xlab("Jacqueline M. Johnson Values") +
+    ylab("This Documents Values")
+}
+```
 
+If there is at least one metric value disagreement for `diff.metric`, plot the counts of metric value disagreement for each metric by source (`source`) and index (`index`).
+```{r, fig.width = 8, fig.height = 25}
+if (nrow(diff.metric) > 0) {
+diff.df %>% 
+  select(unique_id, metric, index, source,  value, old_metric_value, metric_diff) %>% 
+  mutate(metric_diff = abs(metric_diff)) %>% 
+  filter(metric_diff > 2) %>% 
+    group_by(metric, index, source) %>% 
+    summarize(count = n()) %>% 
+    ungroup() %>% 
+    arrange(count) %>% 
+    mutate(metric = factor(metric, levels = unique(metric))) %>% 
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~index + source, ncol = 2) +
+    theme(legend.position = "bottom") +
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+```

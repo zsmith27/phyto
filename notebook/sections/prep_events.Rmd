@@ -71,10 +71,13 @@ salzone.diff <- events.sub %>%
   mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
   ggplot(aes(sal_group, count, fill = count)) + 
   scale_fill_gradient(low = "lightblue", high = "darkblue") +
-  geom_bar(stat = "identity") 
+  geom_bar(stat = "identity") +
+  xlab("Salinity Zone Disagreement") +
+  ylab("Number of Disagreements")
+salzone.diff
 ```
 
-To be consitent with the data used to develope the PIBI, salinity zones specified by Jacqueline M. Johnson (`old_salzone`) were favored when salinity zones differed, therefore, `salzone` is replaced by `old_salzone` when salinity zones differed.
+To be consitent with the data used to develope the PIBI, salinity zones specified by Jacqueline M. Johnson (`old_salzone`) were favored when salinity zones differed. To be more explicit, `salzone` is replaced by `old_salzone` when salinity zones differed.
 ```{r}
 events.sub <- events.sub %>% 
   rename(cedr_salzone = salzone) %>% 

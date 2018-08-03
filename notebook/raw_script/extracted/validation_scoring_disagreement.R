@@ -35,10 +35,13 @@ disagree.ibi <- disagree.df %>%
 
 ## ------------------------------------------------------------------------
 if (nrow(disagree.ibi) > 0) {
-  ggplot(disagree.ibi, aes(index, fill = index)) +
+  disagree.ibi %>%
+    rename(Index = "index") %>% 
+    ggplot(aes(Index, fill = Index)) +
     geom_bar() +
     facet_wrap(~ disagree_bin, scales = "free_x") +
-    coord_flip()
+    coord_flip() +
+    ylab("Count")
 }
 
 ## ------------------------------------------------------------------------
@@ -88,7 +91,10 @@ disagree.score <- disagree.df %>%
 
 ## ---- fig.width = 8, fig.height = 6--------------------------------------
 if (nrow(disagree.score) > 0) {
-  ggplot(disagree.score, aes(metric, count, fill = metric)) +
+  disagree.score %>% 
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip() +
     facet_wrap(~index, ncol = 4) +

@@ -19,7 +19,8 @@ factpal <- colorFactor(c("red", "orange", "yellow", "lightgreen", "green"), ibi.
 
 ## ------------------------------------------------------------------------
 leaflet(ibi.df) %>% 
-  addProviderTiles(providers$CartoDB.Positron) %>%  
+    addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
   addCircleMarkers( ~longitude, ~latitude,
                     color = ~factpal(rating),
                     stroke = FALSE,
@@ -28,7 +29,10 @@ leaflet(ibi.df) %>%
                                   "Agency:", stations.df$agency, "<br/>",
                                   "Source:", stations.df$datasource, "<br/>",
                                   "Latitude:", stations.df$latitude, "<br/>",
-                                  "Longitude:", stations.df$longitude))
+                                  "Longitude:", stations.df$longitude)) %>% 
+  leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
+
 
 ## ---- fig.width = 12, fig.height = 12, message=FALSE---------------------
 min.date <- min(ibi.df$date, na.rm = TRUE)

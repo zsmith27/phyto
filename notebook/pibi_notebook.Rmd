@@ -16,7 +16,7 @@ link-citations: true
 
 ```{r, echo=FALSE, cache=FALSE}
 evaluate <- TRUE
-cache.me <- TRUE
+cache.me <- FALSE
 run.cedr.acquisition <- FALSE
 run.itis.acquisition <- FALSE
 ```

@@ -10,7 +10,7 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me, dev = c('png', 'postscript'
 
 ### IBI Value, IBI Rating, Metric Scoring Disagreements
 
-The metric values, metric scores, IBI values, and IBI rating calssification by Jacueline M. Johnson were used to evaluate the performance of the R-script developed in this document for calculated metric scores and IBI values. The metric values calculated by Jacueline M. Johnson are scored and the IBI values calculated using the R-scripts described in this document. Jacueline M. Johnson, obviously, used these metric values to then calculated metric scores, and subsequently IBI values and IBI ratings; therefore, if the metric scores, IBI values, and IBI ratings generated using this documents R-scripts do not agree with Jacueline M. Johnson's values, then there must be a descrepancy in the scoring procedure, IBI value calculation, or rating classification. The metric values calculated by Jacueline M. Johnson are a baseline from which to validate 
+The metric values, metric scores, IBI values, and IBI rating calssification by Jacueline M. Johnson were used to evaluate the performance of the R-script developed in this document for calculated metric scores and IBI values. The metric values calculated by Jacueline M. Johnson are scored and the IBI values calculated using the R-scripts described in this document. Jacueline M. Johnson, obviously, used these metric values to then calculated metric scores, and subsequently IBI values and IBI ratings; therefore, if the metric scores, IBI values, and IBI ratings generated using this documents R-scripts do not agree with Jacueline M. Johnson's values, then there must be a descrepancy in the scoring procedure, IBI value calculation, or rating classification. The metric values calculated by Jacueline M. Johnson are a baseline from which to QA/QC this document.
 
 #### IBI Value Disagreement
 
@@ -50,13 +50,16 @@ disagree.ibi <- disagree.df %>%
   distinct() 
 ```
 
-If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
+If there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
 ```{r }
 if (nrow(disagree.ibi) > 0) {
-  ggplot(disagree.ibi, aes(index, fill = index)) +
+  disagree.ibi %>%
+    rename(Index = "index") %>% 
+    ggplot(aes(Index, fill = Index)) +
     geom_bar() +
     facet_wrap(~ disagree_bin, scales = "free_x") +
-    coord_flip()
+    coord_flip() +
+    ylab("Count")
 }
 ```
 
@@ -119,7 +122,10 @@ disagree.score <- disagree.df %>%
 If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
 ```{r , fig.width = 8, fig.height = 6}
 if (nrow(disagree.score) > 0) {
-  ggplot(disagree.score, aes(metric, count, fill = metric)) +
+  disagree.score %>% 
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
     geom_bar(stat = "identity") +
     coord_flip() +
     facet_wrap(~index, ncol = 4) +

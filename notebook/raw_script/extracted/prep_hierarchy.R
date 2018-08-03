@@ -11,7 +11,7 @@ taxa.raw <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_ph
                             data.table = FALSE,
                             colClasses = col.class.vec,
                             na.strings = "") %>% 
-  mutate(sampledate = as.Date(sampledate))
+  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"))
 
 ## ------------------------------------------------------------------------
 bay.df <- taxa.raw %>% 
@@ -33,7 +33,6 @@ bay.df <- bay.df %>%
 
 ## ------------------------------------------------------------------------
 bay.df <- bay.df %>% 
-  # Removes methods with prefix "BE" (Tidal Benthic Taxa Enumeration) or blanks.
   filter(grepl("ph", method),
          !latinname %in% c("micro-phytoflagellates",
                            "microflagellates",
@@ -49,7 +48,7 @@ hier.wide <- data.table::fread(file.path(project.dir, "data/itis/itis_hierarchy.
   clean_up()
 
 ## ------------------------------------------------------------------------
-bay.df <- left_join(bay.df, hier.wide, by = c("final_tsn" = "org_tsn")) %>% 
+bay.df <- left_join(bay.df, hier.wide, by = "org_tsn") %>% 
   mutate(unique_id = paste(station, layer, samplenumber, sampledate, sep = "_"))
 
 ## ------------------------------------------------------------------------
@@ -87,7 +86,7 @@ bay.df <- bay.df %>%
 ## ------------------------------------------------------------------------
 rm(col.class.vec)
 
-## ------------------------------------------------------------------------
+## ---- echo=FALSE---------------------------------------------------------
 test <- bay.df %>% 
   filter(is.na(kingdom))
 

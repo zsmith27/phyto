@@ -21,7 +21,7 @@ taxa.raw <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_ph
                             data.table = FALSE,
                             colClasses = col.class.vec,
                             na.strings = "") %>% 
-  mutate(sampledate = as.Date(sampledate))
+  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"))
 ```
 
 The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [@LacouturePhytoplanktonindexbiotic2006] (page 599) developed indices for data collected in the spring (March-May) and summer (July-September).
@@ -49,7 +49,6 @@ bay.df <- bay.df %>%
 Only phytoplankton data ("ph") is retained for analysis. Additionally, some taxa were not identified to any useful taxonomic rank and were excluded from the analysis. 
 ```{r}
 bay.df <- bay.df %>% 
-  # Removes methods with prefix "BE" (Tidal Benthic Taxa Enumeration) or blanks.
   filter(grepl("ph", method),
          !latinname %in% c("micro-phytoflagellates",
                            "microflagellates",
@@ -72,7 +71,7 @@ hier.wide <- data.table::fread(file.path(project.dir, "data/itis/itis_hierarchy.
 
 The taxonomic counts are joined with the taxonomic hierarchy data by the `final_tsn` columns. A unique identifier (`unique_id`) is created for each sampling event by concatenating `station`, `layer`, `samplenumber`, and `sampledate`.
 ```{r}
-bay.df <- left_join(bay.df, hier.wide, by = c("final_tsn" = "org_tsn")) %>% 
+bay.df <- left_join(bay.df, hier.wide, by = "org_tsn") %>% 
   mutate(unique_id = paste(station, layer, samplenumber, sampledate, sep = "_"))
 ```
 
@@ -115,7 +114,7 @@ Remove all unnecessary objects from the environment.
 rm(col.class.vec)
 ```
 
-```{r}
+```{r, echo=FALSE}
 test <- bay.df %>% 
   filter(is.na(kingdom))
 ```

@@ -31,7 +31,8 @@ factpal <- colorFactor(c("red", "orange", "yellow", "lightgreen", "green"), ibi.
 `leaflet` is used to provide a visual reference and check of the ratings.
 ```{r}
 leaflet(ibi.df) %>% 
-  addProviderTiles(providers$CartoDB.Positron) %>%  
+    addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
   addCircleMarkers( ~longitude, ~latitude,
                     color = ~factpal(rating),
                     stroke = FALSE,
@@ -40,7 +41,10 @@ leaflet(ibi.df) %>%
                                   "Agency:", stations.df$agency, "<br/>",
                                   "Source:", stations.df$datasource, "<br/>",
                                   "Latitude:", stations.df$latitude, "<br/>",
-                                  "Longitude:", stations.df$longitude))
+                                  "Longitude:", stations.df$longitude)) %>% 
+  leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
+
 ```
 
 Plot each stations IBI trend for each applicable index. The background colors represent the five rating category ranges (i.e. "poor", "fair_poor", "fair", "fair_good", "good"), providing the user with a quick reference of which rating a particular point would receive.
@@ -80,7 +84,7 @@ ggplot(data = ibi.df, aes(date, ibi_score, group = season_sal, color = season_sa
 
 ```
 
-Another way of looking at the data above is represent all of the samples for a particular station in a box-and-whisker plot. This provides an a good summary of the scores for each station. However, this plot could be miss leading because the majority of stations have frequencies and provides no frame of reference for changes overtime.
+Another way of looking at the data above is represent all of the samples for a particular station in a box-and-whisker plot. This provides an a good summary of the scores for each station. However, this plot could be miss leading because the majority of stations have different sampling frequencies and this plot provides no frame of reference for changes overtime.
 ```{r, fig.width = 12, fig.height = 12}
 
 station.vec <- sort(unique(ibi.df$station))

@@ -53,7 +53,10 @@ salzone.diff <- events.sub %>%
   mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
   ggplot(aes(sal_group, count, fill = count)) + 
   scale_fill_gradient(low = "lightblue", high = "darkblue") +
-  geom_bar(stat = "identity") 
+  geom_bar(stat = "identity") +
+  xlab("Salinity Zone Disagreement") +
+  ylab("Number of Disagreements")
+salzone.diff
 
 ## ------------------------------------------------------------------------
 events.sub <- events.sub %>% 

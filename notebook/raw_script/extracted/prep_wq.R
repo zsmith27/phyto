@@ -13,7 +13,6 @@ wq.df <- wq.df %>%
 ## ------------------------------------------------------------------------
 bay.salzone <- bay.df %>% 
   select(station, sampledate, salzone) %>% 
-  rename(sampledate = sampledate) %>% 
   distinct()
 
 ## ------------------------------------------------------------------------
@@ -28,10 +27,13 @@ wq.df <- wq.df %>%
 ## ------------------------------------------------------------------------
 stations.df <- wq.df %>% 
   dplyr::select(station, agency, source, latitude, longitude) %>% 
-  distinct()
+  distinct() %>% 
+  mutate(longitude = jitter(longitude, amount = 0.0005),
+         latitude = jitter(latitude, amount = 0.0005))
 
 leaflet(stations.df) %>% 
-  addProviderTiles(providers$CartoDB.Positron) %>%  
+    addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
   addCircleMarkers( ~longitude, ~latitude,
                     stroke = FALSE,
                     fillOpacity = 0.5,
@@ -39,7 +41,9 @@ leaflet(stations.df) %>%
                                   "Agency:", stations.df$agency, "<br/>",
                                   "Source:", stations.df$source, "<br/>",
                                   "Latitude:", stations.df$latitude, "<br/>",
-                                  "Longitude:", stations.df$longitude))
+                                  "Longitude:", stations.df$longitude)) %>% 
+   leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
 
 ## ------------------------------------------------------------------------
 wq.s_chla <- wq.df %>% 

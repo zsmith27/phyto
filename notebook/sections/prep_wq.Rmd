@@ -24,7 +24,6 @@ Extract the salinity zone (`salzone`) found in `bay.df`.
 ```{r}
 bay.salzone <- bay.df %>% 
   select(station, sampledate, salzone) %>% 
-  rename(sampledate = sampledate) %>% 
   distinct()
 ```
 
@@ -47,10 +46,13 @@ The stations with water quality data are plotted using `leaflet`, to provide a v
 ```{r}
 stations.df <- wq.df %>% 
   dplyr::select(station, agency, source, latitude, longitude) %>% 
-  distinct()
+  distinct() %>% 
+  mutate(longitude = jitter(longitude, amount = 0.0005),
+         latitude = jitter(latitude, amount = 0.0005))
 
 leaflet(stations.df) %>% 
-  addProviderTiles(providers$CartoDB.Positron) %>%  
+    addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
   addCircleMarkers( ~longitude, ~latitude,
                     stroke = FALSE,
                     fillOpacity = 0.5,
@@ -58,7 +60,9 @@ leaflet(stations.df) %>%
                                   "Agency:", stations.df$agency, "<br/>",
                                   "Source:", stations.df$source, "<br/>",
                                   "Latitude:", stations.df$latitude, "<br/>",
-                                  "Longitude:", stations.df$longitude))
+                                  "Longitude:", stations.df$longitude)) %>% 
+   leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
 ```
 
 The following chunks of code summarize the water quality data according the the Methods section in [@BuchananPhytoplanktonreferencecommunities2005] (page 139). The water quality data is divided into separate data frames, manipulated accordingly, and then appended back together.
@@ -183,7 +187,7 @@ stopCluster(cl)
 #closeAllConnections()
 ```
 
-The water quality data is transformed from a long data format to a long data format.
+The water quality data is transformed from a long data format to a wide data format.
 ```{r}
 env.wide <- env.df %>% 
   spread(parameter, measurevalue)
