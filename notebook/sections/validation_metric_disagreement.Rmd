@@ -7,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-### Metric Disagreement
+#### Metric Disagreement
 
 
 This section compares the values found in this document to the values found by Jacqueline M. Johnson. The previous section was good for identifying issues related to scoring the metrics. This section identifies issues related to the metric values. The discrepancies found here most likely do not reflect the formula used to calculate the metrics but probably stem from differences in how the taxonomic counts are prepared ([Prepare Taxonomic Hierarchy] and [Prepare Carbon Assignments]).
@@ -217,5 +217,33 @@ diff.df %>%
     facet_wrap(~index + source, ncol = 2) +
     theme(legend.position = "bottom") +
     guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+```
+
+
+```{r, fig.width = 8, fig.height = 200}
+
+test.df <- left_join(ratings.df, old.df,
+                     by = c("station", "date", "season",
+                            "salzone",  "metric")) %>% 
+  filter(date <= max(old.df$date)) %>% 
+  unite(index, season, salzone) %>% 
+  left_join(unique(bay.df[, c("unique_id", "source")]),
+            by = "unique_id") %>% 
+  mutate(index = factor(index),
+         metric = factor(metric),
+         source = factor(source)) %>% 
+  select(unique_id, station, index, date, source, ibi_score, old_ibi_score) %>% 
+  mutate(ratio = ibi_score / old_ibi_score)
+
+if (nrow(diff.metric) > 0) {
+  test.df %>%
+    arrange(index) %>% 
+  ggplot(aes(date, ratio, color = index)) +
+    geom_point() +
+    geom_abline(intercept = 0, slope = 1) +
+    facet_wrap(~station + index, ncol = 1, scales = "free") +
+    xlab("Jacqueline M. Johnson Values") +
+    ylab("This Documents Values")
 }
 ```
