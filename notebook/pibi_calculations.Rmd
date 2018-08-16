@@ -1,0 +1,81 @@
+---
+title: "PIBI Calculations"
+author: "Zachary M. Smith"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '6'
+    toc_float: yes
+bibliography: citations.bib
+link-citations: true
+---
+
+`r Sys.Date()`
+
+
+```{r, echo=FALSE, cache=FALSE}
+evaluate <- TRUE
+cache.me <- FALSE
+run.cedr.acquisition <- TRUE
+run.itis.acquisition <- FALSE
+```
+
+## Introduction
+```{r child = 'sections/intro.Rmd', eval=TRUE}
+
+```
+
+## Data Acquisition
+
+### CEDR Data
+```{r child = 'sections/data_acquisition_cedr.Rmd', eval=TRUE}
+
+```
+
+### ITIS Data
+```{r child = 'sections/data_acquisition_itis.Rmd', eval=TRUE}
+
+```
+
+## Prepare Taxonomic Hierarchy
+```{r child = 'sections/prep_hierarchy.Rmd', eval=TRUE}
+
+```
+
+## Prepare Carbon Assignments
+```{r child = 'sections/prep_carbon.Rmd', eval=TRUE}
+
+```
+
+## Prepare Event Data
+```{r child = 'sections/prep_events.Rmd', eval=TRUE}
+
+```
+
+## Prepare Station Data
+```{r child = 'sections/prep_station.Rmd', eval=TRUE}
+
+```
+
+## Prepare Water Quality Data
+```{r child = 'sections/prep_wq.Rmd', eval=TRUE}
+
+```
+
+## Metric Calculation
+```{r child = 'sections/metric_calc.Rmd', eval=TRUE}
+
+```
+
+## Score and Rate Metrics
+```{r child = 'sections/scores_ratings.Rmd', eval=TRUE}
+
+```
+
+## Map Ratings
+```{r child = 'sections/map_ratings.Rmd', eval=TRUE}
+
+```
+
+## Citations
