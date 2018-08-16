@@ -1,0 +1,234 @@
+---
+title: "Wilcoxon Rank Sum Tests for C. Buchanan's Phytoplankton Paper"
+author: "Zachary M. Smith"
+date: "August 9, 2018"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '6'
+    toc_float: yes
+---
+
+# Purpose
+
+The purpose of these analyses is to see if relationships between DOC:Cp and Chla:Cp are stronger than relationships between DOC and Secchi depth. Since Secchi depth decreases non-linearly with depth, the DOC-Secchi relationship is run with Secchi logged and not logged to determine if the relationship is more evident with log Secchi depth. The ratios (e.g., DOC:Cp and Chla:Cp) are also transformed (logged) to better see their relationships. The Pearson and linear regression tests give approximately the same results. The Spearman Rank test is probably the wrong test but was run.
+
+# Preprocessing
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+library(readxl)
+library(toolbox)
+```
+
+```{r}
+doc.df <- readxl::read_excel("data/buchanan_8_9_2018.xlsx",
+                             sheet = "DOC_vs_Secchi") %>% 
+  toolbox::prep_df() %>% 
+  tidyr::unite(season_salzone, c("season", "salzone2"))
+
+ratio.df <- readxl::read_excel("data/buchanan_8_9_2018.xlsx",
+                               sheet = "DOC-Cp_vs_Chla-Cp") %>% 
+  toolbox::prep_df() %>% 
+  dplyr::rename(salzone2 = "salzone2_new_") %>% 
+  tidyr::unite(season_salzone, c("season", "salzone2")) %>% 
+  dplyr::mutate(chla_c = log10(chla_c),
+                doc_c = log10(doc_c))
+```
+
+
+# Functions
+
+## Correlation Function
+
+Exact p-values are not calculated becuase this method often runs into issues with ties.
+```{r}
+# df <- doc.secchi.df
+# x <- "doc"
+# y = "secchi"
+# season.salzone.i <- unique(df$season_salzone)[1]
+corr_by_season_salzone <- function(df, x, y, corr.test) {
+  final.df <- purrr::map_df(unique(df$season_salzone), function(season.salzone.i) {
+    sub.df <- df %>%
+      filter(season_salzone == season.salzone.i)
+    
+    if (nrow(sub.df) <= 10) {
+      dplyr::tibble(season_salzone = season.salzone.i, 
+                    x = x,
+                    y = y,
+                    sample_size = nrow(sub.df),
+                    corr_test = corr.test)
+    } else {
+        x.vec <- dplyr::pull(sub.df, x) 
+    y.vec <- dplyr::pull(sub.df, y) 
+    cor.test(x = x.vec,
+             y = y.vec,
+             method = corr.test,
+             exact = FALSE) %>%
+      broom::tidy() %>% 
+      dplyr::mutate(season_salzone = season.salzone.i,
+                    x = x,
+                    y = y,
+                    corr_test = corr.test,
+                    sample_size = nrow(sub.df),
+                    note = "exact p-values not calculated") %>% 
+      dplyr::select(season_salzone, x, y, sample_size, corr_test, dplyr::everything()) %>% 
+      dplyr::rename(#rho = "estimate",
+        pvalue = "p.value")
+    }
+    
+  
+  })
+  
+  return(final.df)
+}
+
+
+```
+
+## Linear Regression Function
+```{r}
+lm_by_season_salzone <- function(df, x, y) {
+  final.df <- purrr::map_df(unique(df$season_salzone), function(season.salzone.i) {
+    sub.df <- df %>%
+      filter(season_salzone == season.salzone.i)
+    
+    x.vec <- dplyr::pull(sub.df, x) 
+    y.vec <- dplyr::pull(sub.df, y) 
+    
+    lm(x.vec ~ y.vec) %>% 
+      broom::glance() %>% 
+      dplyr::mutate(season_salzone = season.salzone.i,
+                    x = x,
+                    y = y) %>% 
+      dplyr::select(season_salzone, x, y, dplyr::everything())
+    
+  })
+  
+  return(final.df)
+}
+
+```
+
+# DOC vs. Secchi
+
+## Spearman
+```{r}
+doc.secchi.spearman <- corr_by_season_salzone(df = doc.df,
+                                              x = "doc",
+                                              y = "secchi",
+                                              corr.test = "spearman")
+
+DT::datatable(doc.secchi.spearman)
+```
+
+## Pearson
+```{r}
+doc.secchi.pearson <- corr_by_season_salzone(df = doc.df,
+                                             x = "doc",
+                                             y = "secchi",
+                                             corr.test = "pearson")
+
+DT::datatable(doc.secchi.pearson)
+```
+
+## Linear Regression
+
+```{r}
+doc.secchi.lm <- lm_by_season_salzone(df = doc.df,
+                                      x = "doc",
+                                      y = "secchi")
+
+DT::datatable(doc.secchi.lm)
+```
+
+
+## Scatter Plots
+```{r, fig.width=8, fig.height=10}
+doc.df %>%
+  ggplot(aes(doc, secchi)) +
+  geom_point() +
+  geom_smooth(method = 'lm', formula = y ~ x) +
+  facet_wrap( ~ season_salzone, scales = "free")
+```
+
+# DOC vs. Natural Log Secchi
+
+## Spearman
+```{r}
+doc.log.secchi.spearman <- corr_by_season_salzone(df = doc.df,
+                                                  x = "doc",
+                                                  y = "log_secchi",
+                                                  corr.test = "spearman")
+
+DT::datatable(doc.log.secchi.spearman)
+```
+
+## Pearson
+```{r}
+doc.log.secchi.pearson <- corr_by_season_salzone(df = doc.df,
+                                                 x = "doc",
+                                                 y = "log_secchi",
+                                                 corr.test = "pearson")
+
+DT::datatable(doc.log.secchi.pearson)
+```
+
+## Linear Regression
+```{r}
+doc.log.secchi.lm <- lm_by_season_salzone(df = doc.df,
+                                          x = "doc",
+                                          y = "log_secchi")
+
+DT::datatable(doc.log.secchi.lm)
+```
+
+## Scatter Plots
+```{r, fig.width=8, fig.height=10}
+doc.df %>% 
+  ggplot(aes(doc, log_secchi)) +
+  geom_point() +
+  geom_smooth(method = 'lm', formula = y ~ x) +
+  facet_wrap(~season_salzone, scales = "free")
+```
+
+# DOC:Cp vs. Chla:Cp
+## Spearman
+```{r}
+doccp.chlacp.spearman <- corr_by_season_salzone(df = ratio.df,
+                                                    x = "doc_c",
+                                                    y = "chla_c",
+                                                    corr.test = "spearman")
+
+DT::datatable(doccp.chlacp.spearman)
+```
+
+## Pearson
+```{r}
+doccp.chlacp.pearson <- corr_by_season_salzone(df = ratio.df,
+                                               x = "doc_c",
+                                               y = "chla_c",
+                                               corr.test = "pearson")
+
+DT::datatable(doccp.chlacp.pearson)
+```
+
+## Linear Regression
+```{r}
+doccp.chlacp.lm <- lm_by_season_salzone(df = ratio.df,
+                                        x = "doc_c",
+                                        y = "chla_c")
+
+DT::datatable(doccp.chlacp.lm)
+```
+
+## Scatter Plots
+```{r, fig.width=8, fig.height=10}
+ratio.df %>%
+  ggplot(aes(doc_c, chla_c)) +
+  geom_point() +
+  geom_smooth(method = 'lm', formula = y ~ x) +
+  facet_wrap( ~ season_salzone, scales = "free")
+```
+
