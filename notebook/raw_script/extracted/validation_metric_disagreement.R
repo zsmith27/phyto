@@ -153,3 +153,50 @@ if (nrow(diff.metric) > 0) {
     ylab("This Documents Values")
 }
 
+## ---- fig.width = 8, fig.height = 25-------------------------------------
+if (nrow(diff.metric) > 0) {
+diff.df %>% 
+  select(unique_id, metric, index, source,  value, old_metric_value, metric_diff) %>% 
+  mutate(metric_diff = abs(metric_diff)) %>% 
+  filter(metric_diff > 2) %>% 
+    group_by(metric, index, source) %>% 
+    summarize(count = n()) %>% 
+    ungroup() %>% 
+    arrange(count) %>% 
+    mutate(metric = factor(metric, levels = unique(metric))) %>% 
+    rename(Metric = metric,
+           Count = count) %>% 
+  ggplot(aes(Metric, Count, fill = Metric)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    facet_wrap(~index + source, ncol = 2) +
+    theme(legend.position = "bottom") +
+    guides(fill = guide_legend(ncol = 2, bycol = TRUE))
+}
+
+## ---- fig.width = 8, fig.height = 200------------------------------------
+
+test.df <- left_join(ratings.df, old.df,
+                     by = c("station", "date", "season",
+                            "salzone",  "metric")) %>% 
+  filter(date <= max(old.df$date)) %>% 
+  unite(index, season, salzone) %>% 
+  left_join(unique(bay.df[, c("unique_id", "source")]),
+            by = "unique_id") %>% 
+  mutate(index = factor(index),
+         metric = factor(metric),
+         source = factor(source)) %>% 
+  select(unique_id, station, index, date, source, ibi_score, old_ibi_score) %>% 
+  mutate(ratio = ibi_score / old_ibi_score)
+
+if (nrow(diff.metric) > 0) {
+  test.df %>%
+    arrange(index) %>% 
+  ggplot(aes(date, ratio, color = index)) +
+    geom_point() +
+    geom_abline(intercept = 0, slope = 1) +
+    facet_wrap(~station + index, ncol = 1, scales = "free") +
+    xlab("Jacqueline M. Johnson Values") +
+    ylab("This Documents Values")
+}
+

@@ -4,14 +4,13 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ## ------------------------------------------------------------------------
 col.class.vec <- c("samplenumber" = "character",
                    "tsn" = "character",
-                   "speccode" = "character",
-                   "reportingvalue" = "integer")
+                   "speccode" = "character")
 
 taxa.raw <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_taxa.csv"),
                             data.table = FALSE,
                             colClasses = col.class.vec,
                             na.strings = "") %>% 
-  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"))
+  mutate(sampledate = as.Date(sampledate))
 
 ## ------------------------------------------------------------------------
 bay.df <- taxa.raw %>% 
