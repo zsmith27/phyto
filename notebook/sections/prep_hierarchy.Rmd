@@ -14,17 +14,16 @@ Phytoplankton taxonomic count data obtained from CEDR ([Download Phytoplankton D
 ```{r}
 col.class.vec <- c("samplenumber" = "character",
                    "tsn" = "character",
-                   "speccode" = "character",
-                   "reportingvalue" = "integer")
+                   "speccode" = "character")
 
 taxa.raw <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_taxa.csv"),
                             data.table = FALSE,
                             colClasses = col.class.vec,
                             na.strings = "") %>% 
-  mutate(sampledate = as.Date(sampledate, "%m/%d/%Y"))
+  mutate(sampledate = as.Date(sampledate))
 ```
 
-The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, [@LacouturePhytoplanktonindexbiotic2006] (page 599) developed indices for data collected in the spring (March-May) and summer (July-September).
+The PIBI was developed for the taxa found above the pycnocline. Therefore, rows where the layer column does not specifies above the pycnocline ("ap") or water column ("wc") are removed. Furthermore, Lacouture et al. [-@LacouturePhytoplanktonindexbiotic2006, p. 599] developed indices for data collected in the spring (March-May) and summer (July-September).
 ```{r}
 bay.df <- taxa.raw %>% 
   filter(layer %in% c("ap", "wc")) %>% 

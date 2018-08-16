@@ -13,7 +13,7 @@ events.df <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_p
                             na.strings = "")
 ```
 
-Some of the salinity zones (`salzone`) differ from the categories in [@LacouturePhytoplanktonindexbiotic2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline).
+Some of the salinity zones (`salzone`) found in CEDR differ from the salinity zones in Lacouture et al.  [-@LacouturePhytoplanktonindexbiotic2006]. Salinity zones are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline). Salinity zones (`salzone`) provide by CEDR may not be appropriate for the PIBI [Prepare Water Quality Data].
 ```{r}
 events.df <- events.df %>% 
   mutate(sampledate = as.Date(sampledate),
