@@ -4,8 +4,12 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ## ------------------------------------------------------------------------
 carbon.df <- readxl::read_excel(file.path(project.dir, "data/carbon/carbon_list_2014.xlsx"),
                                 sheet = "carbon_list_2014") %>% 
-  clean_up()
-  
+  clean_up() %>% 
+  dplyr::select(-dplyr::contains("new"),
+                -smyayda_carbon,
+                -difference,
+                -shape_change) %>% 
+  dplyr::rename(carbon = old_carbon)
 
 ## ------------------------------------------------------------------------
 carbon.df <- carbon.df %>% 
@@ -25,10 +29,10 @@ carbon.df <- carbon.df %>%
     TRUE,
     FALSE
   )) %>% 
-  select(latinname, size, old_carbon) %>%
+  select(latinname, size, carbon) %>%
   distinct() %>% 
   bind_rows(data.frame(latinname = "asterionellopsis_glacialis", 
-                       old_carbon = carbon.df[carbon.df$latinname == "asterionellopsis_kariana", "old_carbon"],
+                       carbon = carbon.df[carbon.df$latinname == "asterionellopsis_kariana", "carbon"],
                        stringsAsFactors = FALSE))
 
 ## ------------------------------------------------------------------------
@@ -40,12 +44,12 @@ carbon.dups <- carbon.df %>%
 
 ## ------------------------------------------------------------------------
 carbon.df <- carbon.df %>% 
-  filter(!(latinname == "chaetoceros_wighami" & is.na(old_carbon)),
-         !(latinname == "biddulphia" & old_carbon == 7899.50),
-         !(latinname == "gymnodinium" & old_carbon == 848)) # %>% 
+  filter(!(latinname == "chaetoceros_wighami" & is.na(carbon)),
+         !(latinname == "biddulphia" & carbon == 7899.50),
+         !(latinname == "gymnodinium" & carbon == 848)) # %>% 
 #  mutate(size = case_when(
-#    is.na(size) & latinname == "gymnodinium" & old_carbon == 848 ~ "msu",
-#    is.na(size) & latinname == "gymnodinium" & old_carbon == 43.900 ~ "odu",
+#    is.na(size) & latinname == "gymnodinium" & carbon == 848 ~ "msu",
+#    is.na(size) & latinname == "gymnodinium" & carbon == 43.900 ~ "odu",
 #    TRUE ~ size
 #    ))
          
@@ -88,7 +92,7 @@ partial.match.df <- lapply(1:nrow(no.match.df), function(row.i) {
              unlist() %>% 
              getmode()) %>% 
     slice(unique(row_max_matches)) %>% 
-    select(-row_max_matches, -old_carbon) %>% 
+    select(-row_max_matches, -carbon) %>% 
     rename(new_size = size) %>% 
     mutate(size = sub.df$size)
   
@@ -103,5 +107,5 @@ bay.df <- left_join(bay.df, partial.match.df, by = c("latinname", "size")) %>%
 
 ## ------------------------------------------------------------------------
 bay.df <- left_join(bay.df, carbon.df, by = c("latinname", "size")) %>% 
-  mutate(biomass = reportingvalue * old_carbon / 10 ^ 6)
+  mutate(biomass = reportingvalue * carbon / 10 ^ 6)
 

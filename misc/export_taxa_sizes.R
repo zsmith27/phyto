@@ -8,7 +8,7 @@ source("notebook/raw_script/extract_notebook_scripts.R")
 size.df <- bay.df %>% 
   select(source,
          latinname, tsn, nodccode, speccode, serialnumber,
-         reported_size, new_size, old_carbon) %>% 
+         reported_size, new_size, carbon) %>% 
   distinct()
 #------------------------------------------------------------------------------
 # Create a unique file name using date for each day the taxa sizes are exported.
