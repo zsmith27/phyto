@@ -4,25 +4,8 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ## ------------------------------------------------------------------------
 wq.df <- data.table::fread(file.path(project.dir, "data/water_quality/cedr_wq.csv"),
                             data.table = FALSE,
-                           na.strings = c(""))
-
-## ------------------------------------------------------------------------
-wq.df <- wq.df %>% 
-  mutate(sampledate = as.Date(sampledate))
-
-## ------------------------------------------------------------------------
-bay.salzone <- bay.df %>% 
-  select(station, sampledate, salzone) %>% 
-  distinct()
-
-## ------------------------------------------------------------------------
-wq.df <- inner_join(wq.df, bay.salzone, by = c("station", "sampledate"))
-
-## ------------------------------------------------------------------------
-wq.df <- wq.df %>% 
-  filter(is.na(problem)) %>% 
-  unite(parameter, layer, parameter) %>% 
-  filter(str_detect(parameter, "chla|pheo|doc"))
+                           na.strings = c("")) %>% 
+  filter(is.na(problem))
 
 ## ------------------------------------------------------------------------
 stations.df <- wq.df %>% 
@@ -46,55 +29,64 @@ leaflet(stations.df) %>%
   leaflet::setView(-76.4, lat = 38, zoom = 7) 
 
 ## ------------------------------------------------------------------------
-wq.s_chla <- wq.df %>% 
-  select(station, samplereplicatetype, sampledate, parameter, measurevalue) %>% 
-  filter(parameter == "s_chla") %>% 
-  distinct() %>% 
-  select(-samplereplicatetype) %>% 
-  group_by_at(vars(-measurevalue)) %>% 
-  summarize(measurevalue = mean(measurevalue, is.na = TRUE)) %>% 
-  ungroup()
+wq.df <- wq.df %>% 
+  mutate(sampledate = as.Date(sampledate))
 
 ## ------------------------------------------------------------------------
-wq.sub.tf <- wq.df %>% 
-  filter(salzone == "f") %>% 
-  #filter(is.na(upperpycnocline)) %>% 
-  #filter(startsWith(station, "f")) %>% 
-  select(station, samplereplicatetype, sampledate, parameter, measurevalue) %>% 
-  filter(grepl("chla|pheo|doc", parameter)) %>% 
-  distinct() %>% 
-  mutate(parameter = case_when(
-    grepl("chla", parameter) ~ "chla",
-    grepl("pheo", parameter) ~ "pheo",
-    grepl("doc", parameter) ~ "doc",
-    TRUE ~ "ERROR"
-  )) %>% 
-  select(-samplereplicatetype) %>% 
-  group_by_at(vars(-measurevalue)) %>% 
-  summarize(measurevalue = mean(measurevalue)) %>% 
-  ungroup()
+wq.df <- wq.df %>% 
+  mutate(pycnochline = case_when(
+    is.na(upperpycnocline) ~ FALSE,
+    upperpycnocline == 0 ~ FALSE,
+    TRUE ~ TRUE
+  ))
 
 ## ------------------------------------------------------------------------
-wq.sub.pycno <- wq.df %>% 
-  filter(salzone != "f",
-    #!is.na(upperpycnocline),
-         grepl("ap_|s_", parameter)) %>% 
-  #filter(!startsWith(station, "f")) %>% 
-  select(station, samplereplicatetype, sampledate, parameter, measurevalue) %>% 
+issue.df <- wq.df %>% 
+  select(monitoringstation, sampledate, pycnochline) %>% 
   distinct() %>% 
-  mutate(parameter = case_when(
-    parameter %in% c("ap_chla", "s_chla") ~ "chla",
-    parameter %in% c("ap_pheo", "s_pheo") ~ "pheo",
-    parameter %in% c("ap_doc", "s_doc") ~ "doc",
-    TRUE ~ "ERROR"
-  )) %>% 
-  select(-samplereplicatetype) %>% 
-  group_by_at(vars(-measurevalue)) %>% 
-  summarize(measurevalue = mean(measurevalue)) %>% 
-  ungroup()
+  group_by(monitoringstation, sampledate) %>% 
+  count() %>% 
+  filter(n == 2)
+
+wq.df <- left_join(wq.df, issue.df, by = c("monitoringstation", "sampledate")) %>% 
+  mutate(pycnochline2 = if_else(is.na(n), pycnochline, TRUE))
+
 
 ## ------------------------------------------------------------------------
-wq.sub <- bind_rows(wq.s_chla, wq.sub.tf, wq.sub.pycno) %>% 
+wq.df <- wq.df %>% 
+  select(station, sampledate, samplereplicatetype,
+         depth, layer, pycnochline, parameter, measurevalue)
+
+## ------------------------------------------------------------------------
+wq.df <- wq.df %>% 
+  filter(layer == "s", 
+         parameter == "chla") %>% 
+  unite(parameter, c("layer", "parameter"), remove = FALSE) %>% 
+  bind_rows(wq.df)
+
+## ------------------------------------------------------------------------
+avg_wq <- function(x) {
+  final.df <- x %>% 
+    group_by_at(vars(-measurevalue, -samplereplicatetype)) %>% 
+    summarize(measurevalue = mean(measurevalue, na.rm = TRUE)) %>% 
+    group_by_at(vars(-measurevalue, -layer)) %>% 
+    summarize(measurevalue = mean(measurevalue, na.rm = TRUE)) %>% 
+    group_by_at(vars(-measurevalue, -depth)) %>% 
+    summarize(measurevalue = mean(measurevalue, na.rm = TRUE)) %>% 
+    ungroup()
+}
+
+## ------------------------------------------------------------------------
+abp.df <- wq.df %>% 
+  filter(pycnochline == TRUE,
+         layer %in% c("ap", "s")) %>% 
+  avg_wq()
+
+wc.df <- wq.df %>% 
+  filter(pycnochline == FALSE) %>% 
+  avg_wq()
+
+wq.df <- bind_rows(abp.df, wc.df) %>% 
   rename(date = sampledate)
 
 ## ------------------------------------------------------------------------
@@ -108,7 +100,7 @@ bay.sub <- bay.df %>%
 library(parallel)
 n.cores <- detectCores() - 1
 cl <- makeCluster(n.cores)
-clusterExport(cl = cl, varlist = c("wq.sub", "bay.sub"))
+clusterExport(cl = cl, varlist = c("wq.df", "bay.sub"))
 clusterEvalQ(cl, c(library(dplyr))) %>% invisible()
 
 ## ------------------------------------------------------------------------
@@ -116,7 +108,7 @@ env.df <- parLapply(cl, 1:nrow(bay.sub), function(row.i) {
 
   sub.df <- slice(bay.sub, row.i)
   #----------------------------------------------------------------------------
-  sub.env <- wq.sub %>% 
+  sub.env <- wq.df %>% 
     filter(station == sub.df$station,
            date >= sub.df$lower_date,
            date <= sub.df$upper_date)
@@ -153,16 +145,52 @@ env.wide <- env.df %>%
 
 ## ------------------------------------------------------------------------
 env.wide <- env.wide %>% 
-  mutate(
-    surface_chla = if_else(!is.na(s_chla), s_chla, as.numeric(NA)),
-    pheophytin = if_else(!is.na(pheo), pheo, as.numeric(NA)),
-    doc = if_else(!is.na(doc), doc, as.numeric(NA))
-    ) %>% 
-  select(station, sampledate, surface_chla, chla, pheophytin, doc)
+  mutate_at(vars(salinity, s_chla, chla, pheo, doc), as.numeric) %>% 
+  rename(surface_chla = s_chla,
+         pheophytin = pheo) %>% 
+  select(station, sampledate, pycnochline, salinity, surface_chla, chla, pheophytin, doc)
 
 ## ------------------------------------------------------------------------
 bay.df <- left_join(bay.df, env.wide, by = c("station", "sampledate"))
 
 ## ------------------------------------------------------------------------
-#rm(env.df, env.wide, wq.df, wq.sub, bay.sub)
+bay.df <- bay.df %>% 
+  mutate(salzone_calc = case_when(
+    salinity <= 0.5 ~ "f",
+    salinity <= 5.0 ~ "o",
+    salinity <= 18.0 ~ "m",
+    salinity > 18.0 ~ "p",
+    TRUE ~ "missing"
+  ))
+
+## ------------------------------------------------------------------------
+bay.sub <- bay.df %>% 
+  mutate(salzone_disagree = if_else(salzone_calc != old_salzone, TRUE, FALSE))
+
+## ------------------------------------------------------------------------
+salzone.diff <- bay.sub %>% 
+  select(station, sampledate, source, salzone_calc, old_salzone, salzone_disagree) %>% 
+  unite(sal_group, salzone_calc, old_salzone) %>% 
+  distinct() %>% 
+  filter(salzone_disagree == TRUE) %>% 
+  group_by(sal_group) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  arrange(count) %>% 
+  mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
+  ggplot(aes(sal_group, count, fill = count)) + 
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_bar(stat = "identity") +
+  xlab("Salinity Zone Disagreement") +
+  ylab("Number of Disagreements")
+salzone.diff
+
+## ------------------------------------------------------------------------
+bay.df2 <- bay.df %>% 
+  mutate(salzone = if_else(salzone_calc == "missing",
+                           salzone,
+                           salzone_calc))
+
+## ------------------------------------------------------------------------
+#rm(env.df, env.wide, wq.df, wq.df, bay.sub)
 

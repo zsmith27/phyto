@@ -3,7 +3,7 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 
 ## ------------------------------------------------------------------------
 bay.taxa <- bay.df %>% 
-  select(unique_id, sampledate, season, salzone,
+  select(unique_id, sampledate, season,  salzone,
          surface_chla, chla, pheophytin, doc,
          reportingvalue, biomass, latinname, final_id,
          division, phylum, class, species)  %>% 
@@ -13,7 +13,7 @@ bay.taxa <- bay.df %>%
 
 ## ------------------------------------------------------------------------
 metrics.df <- bay.taxa %>%
-  select(unique_id, surface_chla, chla, doc, pheophytin) %>%
+  select(unique_id, salzone, surface_chla, chla, doc, pheophytin) %>%
   distinct() %>%
   mutate(
     total_phyto_biomass = taxa_abund(bay.taxa,

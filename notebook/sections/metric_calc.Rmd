@@ -9,7 +9,7 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 Subset `bay.df` to just represent the columns necessary for metric calculations. Samples without specified salinity zones (`salzone`) are excluded.
 ```{r}
 bay.taxa <- bay.df %>% 
-  select(unique_id, sampledate, season, salzone,
+  select(unique_id, sampledate, season,  salzone,
          surface_chla, chla, pheophytin, doc,
          reportingvalue, biomass, latinname, final_id,
          division, phylum, class, species)  %>% 
@@ -21,7 +21,7 @@ bay.taxa <- bay.df %>%
 The majority of the metrics are calculated using the Multi-Metric Index R-package I am developing, `mmir`. `mmir` is installed and loaded in the Introduction. All of the metrics are calculated for each unique sampling event (`unique_id`), even though not every phytoplankton index uses the same metrics. This is done to simplify the process and the filter of metrics to calculate the IBI scores is done during the scoring section.
 ```{r}
 metrics.df <- bay.taxa %>%
-  select(unique_id, surface_chla, chla, doc, pheophytin) %>%
+  select(unique_id, salzone, surface_chla, chla, doc, pheophytin) %>%
   distinct() %>%
   mutate(
     total_phyto_biomass = taxa_abund(bay.taxa,
