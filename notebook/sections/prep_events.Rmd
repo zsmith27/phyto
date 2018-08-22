@@ -53,7 +53,10 @@ events.sub <- inner_join(events.sub, old.salzone, by = c("station", "sampledate"
 Identify rows where the salinity zone specified by CEDR (`salzone`) differs from the salinity zone specified by Jacqueline M. Johnson (`old_salzone`).
 ```{r}
 events.sub <- events.sub %>% 
-  mutate(salzone_disagree = if_else(salzone != old_salzone, TRUE, FALSE))
+  mutate(salzone_disagree = if_else(salzone != old_salzone, TRUE, FALSE)) %>% 
+  filter(layer != "bp")
+
+DT::datatable(events.sub)
 ```
 
 Summarize and plot the differences in specified salinity zones.
