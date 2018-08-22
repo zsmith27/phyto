@@ -53,11 +53,6 @@ run.itis.acquisition <- FALSE
 
 ```
 
-## Prepare Station Data
-```{r child = 'sections/prep_station.Rmd', eval=TRUE}
-
-```
-
 ## Prepare Water Quality Data
 ```{r child = 'sections/prep_wq.Rmd', eval=TRUE}
 
@@ -73,7 +68,7 @@ run.itis.acquisition <- FALSE
 
 ```
 
-## Map Ratings
+## Ratings
 ```{r child = 'sections/map_ratings.Rmd', eval=TRUE}
 
 ```

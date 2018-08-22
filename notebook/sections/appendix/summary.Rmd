@@ -1,0 +1,7 @@
+---
+title: "Summary of Issues"
+output: html_document
+---
+
+In this section of the document, PIBI scores calculated by Jacqueline M. Johnson with SQL programs over 10 years ago are compared to scores calculated with the processes outline in this document.R functions developed for metric scoring ([Metric Score Disagreement]), IBI scoring ([IBI Value Disagreement]), and IBI rating ([Rating Disagreement]) for the most part appear to be working correctly ([Overview of Descrepancies]). However, a number of discrepancies were identified in the [Metric Disagreement] section. 
+The [IBI Value, IBI Rating, Metric Scoring Disagreements] subsection is a good starting point because it summarizes the discrepancies by index, size of the discrepancy, metric, and data source. Some of these discrepancies are very small when metric values are compared and could be a result of rounding differences. To reduce the impact of minor changes metric scores are compared instead of metric values (discrepancies between metric values should still be explored but discrepancies between metric scores have a larger impact on the final index scores). Metric scores bin the data into four categories: 1, 3, 5, or NA. 

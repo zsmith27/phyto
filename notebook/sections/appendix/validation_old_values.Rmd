@@ -7,9 +7,15 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-### Import Old Values
+In this section, we compare IBI scores calculated from the same dataset of phytoplankton metric values using the R-scripts described above and the original SQL program written by Jacqueline M. Johnson. This comparison will tell us if the R-scripts are correctly calculating the IBI scores. 
 
-Import metric values, scores, IBI values, and ratings calculated by Jacqueline M. Johnson of the Chesapeake Bay Program over 10 years ago. This data provides and independent set of metric values, scores, IBI values, and index ratings to compare to the values determined in this document.
+The metric values and scores produced by Jacqueline M. Johnson with SQL were available in an Excel spreadsheet. For the purpose of this comparison, picophytoplankton abundance values and their associated scores were __NOT__ included in IBIs for Summer mesohaline and Summer polyhaline. IBI scores in these salinity zones were recalculated from the original metric scores minus the picophytoplankton abundance scores. 
+To make the comparisons, the metric values calculated by Jacqueline M. Johnson were scored and the IBI values calculated using the R-scripts described in this document. Jacqueline M. Johnson, obviously, used these metric values to calculate metric scores, and subsequently the IBI values and IBI ratings; therefore, if the metric scores, IBI values, and IBI ratings generated using this document’s R-scripts do not agree with Jacqueline M. Johnson’s values, then there must be a discrepancy in the scoring procedure, IBI value calculation, or rating classification. The metric values calculated by Jacqueline M. Johnson are a baseline from which to QA/QC this document.
+
+
+#### Import Old Values
+
+Import metric values, scores, IBI values, and ratings calculated by Jacqueline M. Johnson at the Chesapeake Bay Program over 10 years ago. This data provides an independent set of metric values, scores, IBI values, and index ratings to compare to the values determined using the R-scripts in this document.
 ```{r}
 old.org.df <- read_excel(file.path(project.dir, "data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx"),
                          sheet = "DATA_4+biometrics",
@@ -59,7 +65,7 @@ old.score <- old.sub %>%
   ungroup()
 ```
 
-`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words each row represents a unique event (`unique_id`), metric value (`old_metric_value`), and score (`old_score_value`).
+`old.metrics` and `old.score` are joined together by `station`, `sample_date`, `season`, `ibi_layer`, `ibi_salzone`, and `metric`. This provides both the metric value and score in a long data format. In other words, each row represents a unique event (`unique_id`), metric value (`old_metric_value`), and score (`old_score_value`).
 ```{r}
 old.df <- full_join(old.metrics, old.score,
                     by = c("station", "sample_date", "season",
@@ -94,9 +100,9 @@ old.df <- left_join(old.df, old.org.df,
          ))
 ```
 
-### Modify Old Values
+#### Modify Old Values
 
-Re-score the metric values from `old.df` using `score_phyto()`. This allows the user to compare the new scoring procedure in this document to the independent scoring procedure created by Jacqueline M. Johnson of the Chesapeake Bay Program in SQL.
+Re-score the metric values from `old.df` using `score_phyto()`. This allows the user to compare the new scoring procedure in this document to the independent scoring procedure created by Jacqueline M. Johnson in SQL.
 ```{r}
 old.rescored <- old.df %>% 
   rename(value = old_metric_value) %>% 

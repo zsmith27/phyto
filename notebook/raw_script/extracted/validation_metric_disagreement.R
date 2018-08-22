@@ -174,29 +174,29 @@ diff.df %>%
     guides(fill = guide_legend(ncol = 2, bycol = TRUE))
 }
 
-## ---- fig.width = 8, fig.height = 200------------------------------------
-
-test.df <- left_join(ratings.df, old.df,
-                     by = c("station", "date", "season",
-                            "salzone",  "metric")) %>% 
-  filter(date <= max(old.df$date)) %>% 
-  unite(index, season, salzone) %>% 
-  left_join(unique(bay.df[, c("unique_id", "source")]),
-            by = "unique_id") %>% 
-  mutate(index = factor(index),
-         metric = factor(metric),
-         source = factor(source)) %>% 
-  select(unique_id, station, index, date, source, ibi_score, old_ibi_score) %>% 
-  mutate(ratio = ibi_score / old_ibi_score)
-
-if (nrow(diff.metric) > 0) {
-  test.df %>%
-    arrange(index) %>% 
-  ggplot(aes(date, ratio, color = index)) +
-    geom_point() +
-    geom_abline(intercept = 0, slope = 1) +
-    facet_wrap(~station + index, ncol = 1, scales = "free") +
-    xlab("Jacqueline M. Johnson Values") +
-    ylab("This Documents Values")
-}
+## ---- echo=FALSE, eval=FALSE, fig.width = 8, fig.height = 200------------
+## 
+## test.df <- left_join(ratings.df, old.df,
+##                      by = c("station", "date", "season",
+##                             "salzone",  "metric")) %>%
+##   filter(date <= max(old.df$date)) %>%
+##   unite(index, season, salzone) %>%
+##   left_join(unique(bay.df[, c("unique_id", "source")]),
+##             by = "unique_id") %>%
+##   mutate(index = factor(index),
+##          metric = factor(metric),
+##          source = factor(source)) %>%
+##   select(unique_id, station, index, date, source, ibi_score, old_ibi_score) %>%
+##   mutate(ratio = ibi_score / old_ibi_score)
+## 
+## if (nrow(diff.metric) > 0) {
+##   test.df %>%
+##     arrange(index) %>%
+##   ggplot(aes(date, ratio, color = index)) +
+##     geom_point() +
+##     geom_abline(intercept = 0, slope = 1) +
+##     facet_wrap(~station + index, ncol = 1, scales = "free") +
+##     xlab("Jacqueline M. Johnson Values") +
+##     ylab("This Documents Values")
+## }
 

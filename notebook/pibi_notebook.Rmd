@@ -21,10 +21,6 @@ run.cedr.acquisition <- FALSE
 run.itis.acquisition <- FALSE
 ```
 
-## Summary of Issues
-```{r child = 'sections/summary.Rmd', eval=TRUE}
-
-```
 
 ## Introduction
 ```{r child = 'sections/intro.Rmd', eval=TRUE}
@@ -58,11 +54,6 @@ run.itis.acquisition <- FALSE
 
 ```
 
-## Prepare Station Data
-```{r child = 'sections/prep_station.Rmd', eval=TRUE}
-
-```
-
 ## Prepare Water Quality Data
 ```{r child = 'sections/prep_wq.Rmd', eval=TRUE}
 
@@ -78,26 +69,14 @@ run.itis.acquisition <- FALSE
 
 ```
 
-## Map Ratings
+## Ratings
 ```{r child = 'sections/map_ratings.Rmd', eval=TRUE}
 
 ```
 
-## Validation
-```{r child = 'sections/validation_old_values.Rmd', eval=TRUE}
+## Appendix A: Score Comparisons
 
-```
-
-```{r child = 'sections/validation_scoring_disagreement.Rmd', eval=TRUE}
-
-```
-
-```{r child = 'sections/validation_metric_disagreement.Rmd', eval=TRUE}
-
-```
-
-## Conclusion
-```{r child = 'sections/conclusions.Rmd', eval=TRUE}
+```{r child = 'sections/appendix_a_master.Rmd', eval=TRUE}
 
 ```
 

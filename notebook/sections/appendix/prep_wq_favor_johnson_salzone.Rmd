@@ -59,37 +59,27 @@ wq.df <- wq.raw %>%
   mutate(sampledate = as.Date(sampledate))
 ```
 
-Identify if there is a `pycnocline` present. If there was no reported `upperpycnocline` or `upperpycnocline` equals zero, then no `pycnocline` was detected (`FALSE`).
+Identify if there is a `pycnochline` present. If there was no reported `upperpycnocline` or `upperpycnocline` equals zero, then no `pycnochline` was detected (`FALSE`).
 ```{r}
 wq.df <- wq.df %>% 
-  mutate(pycnocline = case_when(
+  mutate(pycnochline = case_when(
     is.na(upperpycnocline) ~ FALSE,
     upperpycnocline == 0 ~ FALSE,
     TRUE ~ TRUE
   ))
 ```
 
-Samples reported at monitoring station, CB3.3C, frequently reported an upperpycnocline for some samples but not all of the samples. This created an issue with the code above because it would duplicate the sampling event into a above pycnocline summary and a water column summary. This code identifies these duplicates and alters the `pycnocline` column to equal `TRUE` for these instances.
+Samples reported at monitoring station, CB3.3C, frequently reported an upperpycnochline for some samples but not all of the samples. This created an issue with the code above because it would duplicate the sampling event into a above pycnochline summary and a water column summary. This code identifies these duplicates and alters the `pycnochline` column to equal `TRUE` for these instances.
 ```{r}
 issue.df <- wq.df %>% 
-  select(monitoringstation, sampledate,
-         pycnocline, upperpycnocline, lowerpycnocline) %>% 
+  select(monitoringstation, sampledate, pycnochline) %>% 
   distinct() %>% 
   group_by(monitoringstation, sampledate) %>% 
-  mutate(count = n()) %>% 
-  ungroup() %>% 
-  filter(count == 2,
-         complete.cases(.)) %>% 
-  rename(up = upperpycnocline,
-         lp = lowerpycnocline) %>% 
-  select(-pycnocline)
-  
+  count() %>% 
+  filter(n == 2)
 
 wq.df <- left_join(wq.df, issue.df, by = c("monitoringstation", "sampledate")) %>% 
-  mutate(pycnocline = if_else(is.na(count), pycnocline, TRUE),
-         upperpycnocline = if_else(is.na(up), upperpycnocline, up),
-         lowerpycnocline = if_else(is.na(lp), lowerpycnocline, lp)
-         )
+  mutate(pycnochline = if_else(is.na(n), pycnochline, TRUE))
 ```
 
 Keep only the necessary columns.
@@ -97,9 +87,8 @@ Keep only the necessary columns.
 wq.df <- wq.df %>% 
   select(station, source, sampledate, samplereplicatetype,
          depth, layer, 
-         pycnocline, upperpycnocline, lowerpycnocline,
-         parameter, measurevalue) %>% 
-  distinct()
+         pycnochline, upperpycnocline, lowerpycnocline,
+         parameter, measurevalue)
 ```
 
 Surface chlorophyll a ("s_chla") is extracted as a separate data frame and then appended back to `wq.df`.
@@ -132,7 +121,7 @@ avg_wq <- function(x) {
 ```
 
 
-```{r, eval=FALSE, echo=FALSE}
+```{r, eval=FALSE}
 # If the upper pycnocline depth is specified, then the mean for each parameter (i.e. salinity, chlorophyll a, pheophytin, DOC) is found using samples specified as above the pycnocline ("ap") and surface ("s") Buchanan et al. [-@BuchananPhytoplanktonreferencecommunities2005, p. 139]. If the upper pycnocline depth is not specified, then the mean for each parameter (i.e. salinity, chlorophyll a, pheophytin, DOC) is found using samples from the entire water column Buchanan et al. [-@BuchananPhytoplanktonreferencecommunities2005, p. 139]. Finally, join the two data frames back together to re-create `wq.df`.
 pdepth.df <- events.df %>% 
   mutate(sampledate = as.Date(sampledate)) %>% 
@@ -141,7 +130,7 @@ pdepth.df <- events.df %>%
 
 wq.df <- left_join(wq.df, pdepth.df, by = c("station", "sampledate"))
 abp.df <- wq.df %>% 
-  filter(pycnocline == TRUE,
+  filter(pycnochline == TRUE,
          # source != "vims",
          depth <= upperpycnocline
          # depth <= pdepth
@@ -149,13 +138,13 @@ abp.df <- wq.df %>%
   avg_wq()
 
 vims.df <- wq.df %>% 
-  filter(pycnocline == TRUE,
+  filter(pycnochline == TRUE,
          source == "vims",
          depth <= lowerpycnocline) %>% 
   avg_wq()
 
 wc.df <- wq.df %>% 
-  filter(pycnocline == FALSE) %>% 
+  filter(pycnochline == FALSE) %>% 
   avg_wq()
 
 wq.df <- bind_rows(abp.df,
@@ -167,13 +156,12 @@ wq.df <- bind_rows(abp.df,
 The pychnocline depth (`pdepth`) is extracted from the the event data (`events.df`) and joined with the water quality data (`wq.df`). Only rows with a `depth` above or equal to the `pdepth` are retained. The `avg_wq()` function created above is used to find the average water quality value.
 ```{r}
 pdepth.df <- events.df %>% 
-  filter(layer %in% c("ap", "wc")) %>% 
   mutate(sampledate = as.Date(sampledate)) %>% 
   select(station, sampledate, pdepth) %>% 
   dplyr::distinct()
 
 wq.df <- left_join(wq.df, pdepth.df, by = c("station", "sampledate"))
-wq.df2 <- wq.df %>% 
+wq.df <- wq.df %>% 
   filter(depth <= pdepth) %>% 
   avg_wq() %>% 
   rename(date = sampledate)
@@ -252,7 +240,7 @@ env.wide <- env.wide %>%
   mutate_at(vars(salinity, s_chla, chla, pheo, doc), as.numeric) %>% 
   rename(surface_chla = s_chla,
          pheophytin = pheo) %>% 
-  select(station, sampledate, pycnocline, salinity, surface_chla, chla, pheophytin, doc)
+  select(station, sampledate, pycnochline, salinity, surface_chla, chla, pheophytin, doc)
 ```
 
 Join `bay.df` with `env.wide` to combine phytoplankton count data with water quality data.
@@ -279,10 +267,10 @@ events.df <- events.df %>%
          ))
 ```
 
-Retain only unique information regarding the data provider (`source`), station name (`station`), sample date (`sampledate`), and salinity zone (`salzone`).
+Retain only unique information regarding the data provider (`source`), station name (`station`), sample date (`sampledate`), water layer (`layer`), and salinity zone (`salzone`).
 ```{r}
 events.sub <- events.df %>% 
-  select(source, station, sampledate, salzone) %>% 
+  select(source, station, sampledate, layer, salzone) %>% 
   distinct() %>% 
   rename(salzone_cedr = salzone)
 ```
@@ -334,7 +322,7 @@ salzone.diff
 Join `bay.df` and `events.sub` to combine phytoplankton count data with event data.
 ```{r}
 bay.df <- left_join(bay.df, events.sub, by = c("source", "station",
-                                               "sampledate"))
+                                               "sampledate", "layer"))
 ```
 
 #### Classify Salinity Zones with Salinity Values
@@ -377,7 +365,7 @@ salzone.diff <- bay.sub %>%
 salzone.diff
 ```
 
-```{r, eval=FALSE, echo=FALSE}
+```{r}
 # To be consistent with the data used to develop the PIBI, salinity zones specified by Jacqueline M. Johnson (`salzone_johnson`) were favored when salinity zones differed. If Jacqueline M. Johnson did not provide a salinity zone (`salzone_johnson`) for a sample, then the salinity zones calculated in this document were favored. If neither Jacqueline M. Johnson or this document reported a salinity zone, then the salinity zones reported in CEDR were used.
 bay.df <- bay.df %>% 
   mutate(salzone = case_when(
@@ -416,7 +404,7 @@ salzone.diff
 ```
 
 Salinity zone classifications made in this document (`salzone_calc`) were favored but salinity zones found in CEDR were used in the absence of `salzone_calc` values.
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 bay.df <- bay.df %>% 
   mutate(salzone = case_when(
     !is.na(salzone_calc) ~ salzone_calc,

@@ -7,10 +7,10 @@ output: html_document
 knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
 ```
 
-#### Metric Disagreement
+#### Calculation of Metric Values from the Raw Data
 
 
-This section compares the values found in this document to the values found by Jacqueline M. Johnson. The previous section was good for identifying issues related to scoring the metrics. This section identifies issues related to the metric values. The discrepancies found here most likely do not reflect the formula used to calculate the metrics but probably stem from differences in how the taxonomic counts are prepared ([Prepare Taxonomic Hierarchy] and [Prepare Carbon Assignments]).
+This section compares the metric values obtained from the output of Jacqueline M. Johnson’s SQL program to the metric values calculated from raw count data with the R-scripts. Discrepancies found here relate to how the metrics are calculated from the raw count data. They most likely do not reflect the formulas used to calculate the metrics from the raw count data, but probably stem from differences in how the taxonomic count data are prepared ([Prepare Taxonomic Hierarchy] and [Prepare Carbon Assignments]).
 
 Values from this document (`ratings.df`) are merged with Jacqueline M. Johnson's values (`old.df`).  Season (`season`) and salinity zone (`salzone`) are combined (`tidyr::unite()`) to represent phytoplankton index names. Metrics (`metric`), indices (`index`), and data sources (`source`) are converted to factors to make them easier to plot in subsequent code chunks.
 ```{r}
@@ -48,7 +48,7 @@ diff.df <- join.df %>%
   distinct()
 ```
 
-#### Overview of Descrepancies
+##### Overview of Discrepancies
 
 Focus on just the IBI scores that differ. Categorize the IBI score differences (`ibi_diff`) into bins representing 0.5 increments.
 ```{r}
@@ -70,7 +70,7 @@ diff.ibi <- diff.df %>%
   arrange(desc(ibi_diff))
 ```
 
-##### IBI Scores
+###### IBI Scores
 
 If at there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
 ```{r , fig.width = 8, fig.height = 6}
@@ -86,7 +86,7 @@ if (nrow(diff.ibi) > 0) {
 }
 ```
 
-##### Metric Scores
+###### Metric Scores
 
 Focus just on scores that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_score_value`), and this documents scored values (`score`). Find the absolute difference (`score_diff`) between Jacqueline M. Johnson's scores (`old_score_value`) and this documents scored values (`score`). Only rows where the scores disagree (`score_diff > 0`) are retained.
 ```{r}
@@ -158,7 +158,7 @@ if (nrow(diff.score.source) > 0) {
 }
 ```
 
-##### Metric Values
+###### Metric Values
 
 Focus just on metric values that differ, which makes it easier to identify errors in this documents code. Subset `diff.df` to only include metrics (`metric`), metric values (`value`), Jacqueline M. Johnson's scores (`old_metric_value`), and this documents scored values (`value`). Find the absolute difference (`metric_diff`) between Jacqueline M. Johnson's scores (`old_metric_value`) and this documents scored values (`value`). Only rows where the scores disagree by more than two (`metric_diff > 2`) are retained. Two was arbitrary selected to represent a small buffer to account for rounding error.
 ```{r}
@@ -221,7 +221,7 @@ diff.df %>%
 ```
 
 
-```{r, fig.width = 8, fig.height = 200}
+```{r, echo=FALSE, eval=FALSE, fig.width = 8, fig.height = 200}
 
 test.df <- left_join(ratings.df, old.df,
                      by = c("station", "date", "season",
@@ -247,3 +247,47 @@ if (nrow(diff.metric) > 0) {
     ylab("This Documents Values")
 }
 ```
+
+##### Summary of the Discrepancies
+
+1. The metric with the greatest number of scoring discrepancies is Pheophytin. 
+    + This is an issue for all season and salinity zone versions of the indices and both data sources (MSU/Pearl and ODU).
+        + MSU/Pearl Pheophytin values differ more frequently.
+    + Potential reason(s) for issue:
+        + Calculation of mean pheophytin values.
+            + Current procedure ([Prepare Water Quality Data]).
+                + When a pycnocline is recorded, measurements are first averaged by the depth at which they were collected and then averaged across all depths above the pycnocline depth.
+                + When a pycnocline depth is not recorded, measurements are first averaged by the depth at which they were collected and then averaged across all depths in the water column.
+            + Jacqueline M. Johnson may have had a more complicated procedure than is outlined in [Prepare Water Quality Data].
+            + Additional data may have been acquired since the Jacqueline M. Johnson last calculated these values.
+
+2. The metric with the second greatest number of scoring discrepancies is total_phyto_biomass_chla_ratio.
+    + This is an issue for all indices that incorporate this metric and both data sources.
+        + MSU/Pearl values differ more frequently.
+    + Potential reason(s) for issue:
+        + Calculation of mean chla values in the surface mixed layer (See reasons discussed for Pheophytin above).
+        + Jacqueline M. Johnson may have had a different procedure for calculating biomass than what is outlined in [Prepare Carbon Assignments]. In most cases total_phyto_biomass has little to no discrepancies, suggesting chla values are the issue.
+            + This seems unlikely because there are many instances where the total_phyto_biomass_chla_ratio values do agree. Maybe Jacqueline M. Johnson used slightly modified carbon conversions for som taxa?
+3. The metric with the third greatest number of scoring discrepancies is dinoflagellate_biomass.
+    + See reasons discussed for total_phyto_biomass_chla_ratio above.
+    
+4. The metric with the fourth greatest number of scoring discrepancies is DOC.
+    + See reasons discussed for Pheophytin above.
+
+5. Discrepancies in the remaining biomass metric scores are most likely due to different calculations of biomass (see total_phyto_biomass_chla_ratio discussed above).
+    + Could be the result of differences between the assigned taxonomic hierarchy in this document and the hierarchy assigned by Jacqueline M. Johnson.
+        + A recent version of ITIS was used to acquire the majority of taxonomic hierarchy information for the reported phytoplankton taxa (see [ITIS Data] and [Prepare Taxonomic Hierarchy]). I believe ITIS was used by Jacqueline M. Johnson as well because the Chesapeake Bay Program Incorporates TSNs (Taxonomic Serial Number assigned by ITIS) in most of their taxonomic databases. Taxonomic updates to ITIS between the assessments could cause some of these differences.
+
+There are several probable sources for these discrepancies: 
+
+1. The most likely source is an error or issue in this documents R-script. 
+    + Incorrect interpretation of data preparation or calculation
+    + Overlooked data preparation steps
+    + Poorly described data preparation steps in Jacqueline M. Johnson's documentation, which make it difficult to replicate in this document
+
+2. There is potential for issues in the Jacqueline M. Johnson's SQL code, which would ultimately lead to discrepancies between her calculated values and the values calculated with the R-scripts in this document. 
+
+3. The water quality and/or biological data may have been updated or altered between the time Jacqueline M. Johnson calculated the indices and now.
+    + Taxonomic names may have been updated to reflect currently accepted taxonomic nomenclature.
+    + Data could be represented differently in the new Chesapeake Bay Program CEDR database.
+

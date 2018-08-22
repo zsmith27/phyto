@@ -1,0 +1,10 @@
+---
+title: "Conclusions"
+output: html_document
+---
+
+Currently, there are discrepancies between the PIBI values calculated in this document and the PIBI values calculated earlier by Jacqueline M. Johnson. This seems to be due to how the metric values are calculated from the raw count data.
+
+The metric scoring functions provided in this document appear to be functioning correctly based on the [Metric Score Disagreement] section. After using the scoring functions to re-score the metric values provided by Jacqueline M. Johnson, several errors were identified and corrected. These corrections reduced the scoring discrepancies to less than six. Most of the remaining discrepancies are found at scoring thresholds. Jacqueline M. Johnson's code provided the best description of scoring thresholds, which have been replicated in the [Scoring Functions] section; at this time, I have no justification for altering the thresholds further, so the few discrepancies will have to remain.
+
+The [Metric Score Disagreement] section suggests there are a significant number of discrepancies between the metric values calculated from phytoplankton raw counts presently downloadable from CEDR and the metric values calculated by Jacqueline M. Johnson from the raw data available to her at the time.  Reasons for the differences could involve metric calculations and/or, more likely, differences in taxonomic count preparations. So far, no table has been found representing Jacqueline M. Johnson’s prepared taxonomic counts. This table would make it easier to identify discrepancies in how the taxa are prepared (e.g. excluded taxa or assigned carbon values). Without this table I need help identifying why these discrepancies exist. If you have any suggestions, please let me know.

@@ -110,7 +110,6 @@ avg_wq <- function(x) {
 
 ## ------------------------------------------------------------------------
 pdepth.df <- events.df %>% 
-  filter(layer %in% c("ap", "wc")) %>% 
   mutate(sampledate = as.Date(sampledate)) %>% 
   select(station, sampledate, pdepth) %>% 
   dplyr::distinct()
@@ -198,7 +197,7 @@ events.df <- events.df %>%
 
 ## ------------------------------------------------------------------------
 events.sub <- events.df %>% 
-  select(source, station, sampledate, salzone) %>% 
+  select(source, station, sampledate, layer, salzone) %>% 
   distinct() %>% 
   rename(salzone_cedr = salzone)
 
@@ -240,7 +239,7 @@ salzone.diff
 
 ## ------------------------------------------------------------------------
 bay.df <- left_join(bay.df, events.sub, by = c("source", "station",
-                                               "sampledate"))
+                                               "sampledate", "layer"))
 
 ## ------------------------------------------------------------------------
 bay.df <- bay.df %>% 
@@ -274,16 +273,16 @@ salzone.diff <- bay.sub %>%
   ylab("Number of Disagreements")
 salzone.diff
 
-## ---- eval=FALSE, echo=FALSE---------------------------------------------
-## # To be consistent with the data used to develop the PIBI, salinity zones specified by Jacqueline M. Johnson (`salzone_johnson`) were favored when salinity zones differed. If Jacqueline M. Johnson did not provide a salinity zone (`salzone_johnson`) for a sample, then the salinity zones calculated in this document were favored. If neither Jacqueline M. Johnson or this document reported a salinity zone, then the salinity zones reported in CEDR were used.
-## bay.df <- bay.df %>%
-##   mutate(salzone = case_when(
-##     !is.na(salzone_johnson) ~ salzone_johnson,
-##     is.na(salzone_johnson) & !is.na(salzone_calc) ~ salzone_calc,
-##     is.na(salzone_johnson) & is.na(salzone_calc) ~ salzone_cedr,
-##     TRUE ~ "ERROR"
-##   )) %>%
-##   mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
+## ------------------------------------------------------------------------
+# To be consistent with the data used to develop the PIBI, salinity zones specified by Jacqueline M. Johnson (`salzone_johnson`) were favored when salinity zones differed. If Jacqueline M. Johnson did not provide a salinity zone (`salzone_johnson`) for a sample, then the salinity zones calculated in this document were favored. If neither Jacqueline M. Johnson or this document reported a salinity zone, then the salinity zones reported in CEDR were used.
+bay.df <- bay.df %>% 
+  mutate(salzone = case_when(
+    !is.na(salzone_johnson) ~ salzone_johnson,
+    is.na(salzone_johnson) & !is.na(salzone_calc) ~ salzone_calc,
+    is.na(salzone_johnson) & is.na(salzone_calc) ~ salzone_cedr,
+    TRUE ~ "ERROR"
+  )) %>% 
+  mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
 
 ## ------------------------------------------------------------------------
 bay.sub <- bay.df %>% 
@@ -307,15 +306,15 @@ salzone.diff <- bay.sub %>%
   ylab("Number of Disagreements")
 salzone.diff
 
-## ------------------------------------------------------------------------
-bay.df <- bay.df %>% 
-  mutate(salzone = case_when(
-    !is.na(salzone_calc) ~ salzone_calc,
-    is.na(salzone_calc) ~ salzone_cedr,
-    is.na(salzone_calc) & is.na(salzone_cedr) ~ as.character(NA),
-    TRUE ~ "ERROR"
-  )) %>% 
-  mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
+## ---- eval=FALSE, echo=FALSE---------------------------------------------
+## bay.df <- bay.df %>%
+##   mutate(salzone = case_when(
+##     !is.na(salzone_calc) ~ salzone_calc,
+##     is.na(salzone_calc) ~ salzone_cedr,
+##     is.na(salzone_calc) & is.na(salzone_cedr) ~ as.character(NA),
+##     TRUE ~ "ERROR"
+##   )) %>%
+##   mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
 
 ## ------------------------------------------------------------------------
 points.df <- bay.df %>% 

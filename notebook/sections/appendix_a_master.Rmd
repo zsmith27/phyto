@@ -1,0 +1,57 @@
+---
+title: "Untitled"
+author: "Zachary M. Smith"
+date: "August 21, 2018"
+output: html_document
+---
+
+```{r child = 'prep_hierarchy.Rmd', eval=TRUE}
+
+```
+
+```{r child = 'prep_carbon.Rmd', eval=TRUE}
+
+```
+
+```{r child = 'prep_events.Rmd', eval=TRUE}
+
+```
+
+```{r child = 'appendix/prep_wq_favor_johnson_salzone.Rmd', eval=TRUE, echo=FALSE}
+
+```
+
+```{r child = 'metric_calc.Rmd', eval=TRUE, echo=FALSE}
+
+```
+
+```{r child = 'scores_ratings.Rmd', eval=TRUE, echo=FALSE}
+
+```
+
+```{r child = 'map_ratings.Rmd', eval=TRUE, echo=FALSE}
+
+```
+
+### Summary of Issues
+```{r child = 'appendix/summary.Rmd', eval=TRUE}
+
+```
+
+### Validation of R-Script Calculations
+```{r child = 'appendix/validation_old_values.Rmd', eval=TRUE}
+
+```
+
+```{r child = 'appendix/validation_scoring_disagreement.Rmd', eval=TRUE}
+
+```
+
+```{r child = 'appendix/validation_metric_disagreement.Rmd', eval=TRUE}
+
+```
+
+### Conclusion
+```{r child = 'appendix/conclusions.Rmd', eval=TRUE}
+
+```

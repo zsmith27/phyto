@@ -8,11 +8,9 @@ knitr::opts_chunk$set(eval=evaluate, cache=cache.me, dev = c('png', 'postscript'
 ```
 
 
-### IBI Value, IBI Rating, Metric Scoring Disagreements
+#### IBI Value, IBI Rating, Metric Scoring Disagreements
 
-The metric values, metric scores, IBI values, and IBI rating calssification by Jacueline M. Johnson were used to evaluate the performance of the R-script developed in this document for calculated metric scores and IBI values. The metric values calculated by Jacueline M. Johnson are scored and the IBI values calculated using the R-scripts described in this document. Jacueline M. Johnson, obviously, used these metric values to then calculated metric scores, and subsequently IBI values and IBI ratings; therefore, if the metric scores, IBI values, and IBI ratings generated using this documents R-scripts do not agree with Jacueline M. Johnson's values, then there must be a descrepancy in the scoring procedure, IBI value calculation, or rating classification. The metric values calculated by Jacueline M. Johnson are a baseline from which to QA/QC this document.
-
-#### IBI Value Disagreement
+##### IBI Value Disagreement
 
 Identify IBI scores re-calculated in this document that differ from the IBI scores calculated by Jacqueline M. Johnson. All numeric values are rounded to the hundredth place to remove minor discrepancies between the values being compared. The absolute difference between the re-calculated IBI score and Jacqueline M. Johnson's IBI score is calculated (`ibi_diff`). Rows are sorted to present IBI score differences in descending order (`ibi_diff`) and only rows where the IBI differences disagree (`ibi_diff > 0`) are retained. This data frame can be used to explore differences in individual metric scores that are causing discrepancies between the two IBI values. Season (`season`) and salinity zone (`salzone`) are extracted from the unique event identifier (`unique_id`) and combined (`unite()`) to represent phytoplankton index names. Metrics (`metric`) and indices (`index`) are converted to factors to make them easier to plot in subsequent code chunks.
 ```{r }
@@ -50,7 +48,7 @@ disagree.ibi <- disagree.df %>%
   distinct() 
 ```
 
-If there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ.
+If there is at least one IBI score disagreement, then plot the counts of IBI score disagreement for each index (`index`). The bins created in the previous code chunk can be used to divide up the data into separate plots and provide a little bit more information regarding how much the index scores differ. Only six IBI scores differed. Differences were less than 0.5 points on the IBI scale of 1 – 5.
 ```{r }
 if (nrow(disagree.ibi) > 0) {
   disagree.ibi %>%
@@ -63,9 +61,9 @@ if (nrow(disagree.ibi) > 0) {
 }
 ```
 
-#### Rating Disagreement
+##### Rating Disagreement
 
-Focus on just ratings that differ, which makes it easier to identify errors in this documents code. Subset `disagree.df` to only include only rows where ratings classified in this document (`rating`) and ratings specified by Jacqueline M. Johnson (`old_rating`) disagree. Additionally, only include rows where the unaltered original IBI score reported by Jacqueline M. Johnson (`old_org_ibi_score`) is equivalent to the IBI score calculated in this document (`ibi_score`). The IBI score reported by Jacqueline M. Johnson was modified to exclude any the inclusion of Picophytoplankton abundance (`old_ibi_score`) in the [Modify Old Values] section to provide a better comparison of IBI scores in this document and Jacqueline M. Johnson's IBI scores. However, this method does not allow us to accurately assess ratings. If we apply the rating function, `rate_phyto()`, to Jacqueline M. Johnson's values, then the ratings will always agree when the IBI scores are equivalent. Therefore, the rating assessment must be limited to when the re-calculated IBI scores (`ibi_score`) is equvalent to the unaltered, original IBI score reported by Jacqueline M. Johnson (`old_org_ibi_score`); the comparison of the re-classified IBI ratings (`rating`) with the original IBI rating specified by Jacqueline M. Johnson (`old_rating`) provides an independent check of the rating function, `rate_phyto()`, developed in this document.
+Focus on just ratings that differ, which makes it easier to identify errors in this document's code. Subset `disagree.df` to only include only rows where ratings classified in this document (`rating`) and ratings specified by Jacqueline M. Johnson (`old_rating`) disagree. Additionally, only include rows where the unaltered original IBI score reported by Jacqueline M. Johnson (`old_org_ibi_score`) is equivalent to the IBI score calculated in this document (`ibi_score`). The IBI score reported by Jacqueline M. Johnson was modified to exclude any the inclusion of Picophytoplankton abundance (`old_ibi_score`) in the [Modify Old Values] section to provide a better comparison of IBI scores in this document and Jacqueline M. Johnson's IBI scores. However, this method does not allow us to accurately assess ratings. If we apply the rating function, `rate_phyto()`, to Jacqueline M. Johnson's values, then the ratings will always agree when the IBI scores are equivalent. Therefore, the rating assessment must be limited to when the re-calculated IBI scores (`ibi_score`) is equivalent to the unaltered, original IBI score reported by Jacqueline M. Johnson (`old_org_ibi_score`); the comparison of the re-classified IBI ratings (`rating`) with the original IBI rating specified by Jacqueline M. Johnson (`old_rating`) provides an independent check of the rating function, `rate_phyto()`, developed in this document.
 ```{r }
 disagree.rating <- disagree.df %>% 
   filter(rating != old_rating,
@@ -75,7 +73,7 @@ disagree.rating <- disagree.df %>%
 ```
 
 
-If there is at least one IBI rating disagreement, plot the counts of IBI rating disagreements.
+If there is at least one IBI rating disagreement, plot the counts of IBI rating disagreements. No differences were found in ratings generated by the R-scripts and the ratings obtained after averaging the metric scores (minus the picophytoplankton abundance scores) generated by Jacqueline M. Johnson’s SQL program.
 ```{r }
 if (nrow(disagree.rating) > 0) {
   disagree.rating %>% 
@@ -119,7 +117,7 @@ disagree.score <- disagree.df %>%
   mutate(count = if_else(is.na(count), as.integer(0), count))
 ```
 
-If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`).
+If there is at least one metric score disagreement, plot the counts of score disagreement for each metric by index (`index`). Five of the six discrepancies involve the total_phyto_biomass_chla_ratio. This suggests a rounding difference either before or after chlorophyll a is divided by total phytoplankton biomass. The sixth discrepancy, percent cryptophyte, could also involve a rounding error.
 ```{r , fig.width = 8, fig.height = 6}
 if (nrow(disagree.score) > 0) {
   disagree.score %>% 
