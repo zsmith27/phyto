@@ -5,33 +5,6 @@ date: "August 21, 2018"
 output: html_document
 ---
 
-```{r child = 'prep_hierarchy.Rmd', eval=TRUE}
-
-```
-
-```{r child = 'prep_carbon.Rmd', eval=TRUE}
-
-```
-
-```{r child = 'prep_events.Rmd', eval=TRUE}
-
-```
-
-```{r child = 'appendix/prep_wq_favor_johnson_salzone.Rmd', eval=TRUE, echo=FALSE}
-
-```
-
-```{r child = 'metric_calc.Rmd', eval=TRUE, echo=FALSE}
-
-```
-
-```{r child = 'scores_ratings.Rmd', eval=TRUE, echo=FALSE}
-
-```
-
-```{r child = 'map_ratings.Rmd', eval=TRUE, echo=FALSE}
-
-```
 
 ### Summary of Issues
 ```{r child = 'appendix/summary.Rmd', eval=TRUE}

@@ -1,0 +1,70 @@
+---
+title: "R Notebook"
+output: html_document
+---
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
+```
+
+Phytoplankton sampling event and station data obtained from CEDR ([Download Monitoring Event]) is imported.
+```{r}
+events.df <- data.table::fread(file.path(project.dir, "data/phytoplankton/cedr_phyto_event.csv"),
+                            data.table = FALSE,
+                            na.strings = "")
+
+station.df <- data.table::fread(file.path(project.dir,
+                                          "data/phytoplankton/cedr_phyto_station.csv"),
+                                data.table = FALSE,
+                                na.strings = "")
+```
+
+Identify any stations in `events.df` that are not found in `bay.df`.
+```{r}
+missing.taxa <- anti_join(events.df, bay.df, by = "station")
+```
+
+`leaflet` is used to provide a visual reference and check of the data. The stations with event data are plotted as blue circles and the stations without event data are plotted as red circles. If there is an error with the code, then the points will be plotted as pink circles. `jitter()` is used to alter the points position slightly, to prevent event data for the same station from completely overlapping one another.
+```{r}
+library(leaflet)
+events.sub <- events.df %>% 
+  select(catalogingunitdescription, source, latitude, longitude, station) %>% 
+  filter(!is.na(latitude)) %>% 
+  mutate(no_taxa_data = station %in% unique(missing.taxa$station),
+         no_taxa_data = factor(no_taxa_data)) %>% 
+  distinct() %>% 
+  mutate(longitude = jitter(longitude, amount = 0.0005),
+         latitude = jitter(latitude, amount = 0.0005))
+
+if (length(unique(events.sub$no_taxa_data)) == 2) {
+  factpal <- colorFactor(c("blue", "red"), events.sub$no_taxa_data)
+} else if (length(unique(events.sub$no_taxa_data)) == 1) {
+  factpal <- colorFactor("blue", events.sub$no_taxa_data)
+} else {
+  factpal <- colorFactor("pink", events.sub$no_taxa_data)
+}
+
+
+leaflet(events.sub) %>% 
+  addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
+  addCircleMarkers(~longitude, ~latitude,
+                   color = ~factpal(no_taxa_data),
+                   stroke = FALSE,
+                   fillOpacity = 0.5,
+                   popup = paste("Station:", events.sub$station, "<br/>",
+                                 "Description:", events.sub$catalogingunitdescription, "<br/>",
+                                 "Source:", events.sub$source, "<br/>",
+                                 "Latitude:", events.sub$latitude, "<br/>",
+                                 "Longitude:", events.sub$longitude),
+                   popupOptions = popupOptions(style = list(color = "black"))) %>% 
+  leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
+
+```
+
+```{r}
+bay.df <- events.df %>% 
+  mutate(sampledate = as.Date(sampledate)) %>% 
+  select(station, source, sampledate, layer, pdepth, salzone)
+```
+

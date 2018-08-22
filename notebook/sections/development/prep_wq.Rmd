@@ -1,0 +1,509 @@
+---
+title: "R Notebook"
+output: html_document
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(eval=evaluate, cache=cache.me)
+```
+
+Phytoplankton sampling event data obtained from CEDR ([Download Monitoring Event]) is imported any rows that contain a `problem` flag are removed.
+```{r}
+wq.raw <- data.table::fread(file.path(project.dir, "data/water_quality/cedr_wq.csv"),
+                            data.table = FALSE,
+                           na.strings = c("")) %>% 
+  filter(is.na(problem))
+```
+
+The stations with water quality data are plotted using `leaflet`, to provide a visual reference and check of the data.
+```{r}
+stations.df <- wq.raw %>% 
+  dplyr::select(station, agency, source, latitude, longitude) %>% 
+  distinct() %>% 
+  mutate(longitude = jitter(longitude, amount = 0.0005),
+         latitude = jitter(latitude, amount = 0.0005))
+
+leaflet(stations.df) %>% 
+    addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
+  addCircleMarkers( ~longitude, ~latitude,
+                    stroke = FALSE,
+                    fillOpacity = 0.5,
+                    popup = paste("Station:", stations.df$station, "<br/>",
+                                  "Agency:", stations.df$agency, "<br/>",
+                                  "Source:", stations.df$source, "<br/>",
+                                  "Latitude:", stations.df$latitude, "<br/>",
+                                  "Longitude:", stations.df$longitude)) %>% 
+   leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
+```
+
+## Preprocessing
+
+Salinity, dissolved organic carbon (DOC), surface chlorophyll a, and depth integrated
+chlorophyll a, and pheophytin are the five water quality parameters retained for PIBI
+calculations. These five water quality parameters are collected by the CBP water quality
+monitoring programs. PIBI metrics and the thresholds used to score the metrics depend on the
+salzone of the layer above the pycnocline where a sample was collected. Salzone is based on
+the average salinity in the above-pycnocline layer (includes surface). Dissolved organic carbon
+(DOC) chlorophyll a, and depth-integrated pheophytin are three parameters used as
+phytoplankton metrics. Depth-integrated chlorophyll a is used in calculations of chlorophyll cell content (i.e., ratio of chlorophyll a to total biomass).
+
+### Water Quality Parameters
+
+The following chunks of code summarize the water quality data according the the Methods section in Buchanan et al. [-@BuchananPhytoplanktonreferencecommunities2005, p. 139]. The water quality data is divided into separate data frames, manipulated accordingly, and then appended back together.
+
+Convert the sample date (`sampledate`) to class date.
+```{r}
+wq.df <- wq.raw %>% 
+  mutate(sampledate = as.Date(sampledate))
+```
+
+Identify if there is a `pycnocline` present. If there was no reported `upperpycnocline` or `upperpycnocline` equals zero, then no `pycnocline` was detected (`FALSE`).
+```{r}
+wq.df <- wq.df %>% 
+  mutate(pycnocline = case_when(
+    is.na(upperpycnocline) ~ FALSE,
+    upperpycnocline == 0 ~ FALSE,
+    TRUE ~ TRUE
+  ))
+```
+
+Samples reported at monitoring station, CB3.3C, frequently reported an upperpycnocline for some samples but not all of the samples. This created an issue with the code above because it would duplicate the sampling event into a above pycnocline summary and a water column summary. This code identifies these duplicates and alters the `pycnocline` column to equal `TRUE` for these instances.
+```{r}
+issue.df <- wq.df %>% 
+  select(monitoringstation, sampledate,
+         pycnocline, upperpycnocline, lowerpycnocline) %>% 
+  distinct() %>% 
+  group_by(monitoringstation, sampledate) %>% 
+  mutate(count = n()) %>% 
+  ungroup() %>% 
+  filter(count == 2,
+         complete.cases(.)) %>% 
+  rename(up = upperpycnocline,
+         lp = lowerpycnocline) %>% 
+  select(-pycnocline)
+  
+
+wq.df <- left_join(wq.df, issue.df, by = c("monitoringstation", "sampledate")) %>% 
+  mutate(pycnocline = if_else(is.na(count), pycnocline, TRUE),
+         upperpycnocline = if_else(is.na(up), upperpycnocline, up),
+         lowerpycnocline = if_else(is.na(lp), lowerpycnocline, lp)
+         )
+```
+
+Keep only the necessary columns.
+```{r}
+wq.df <- wq.df %>% 
+  select(station, source, sampledate, samplereplicatetype,
+         depth, layer, 
+         pycnocline, upperpycnocline, lowerpycnocline,
+         parameter, measurevalue) %>% 
+  distinct()
+```
+
+Surface chlorophyll a ("s_chla") is extracted as a separate data frame and then appended back to `wq.df`.
+```{r}
+wq.df <- wq.df %>% 
+  filter(layer == "s", 
+         parameter == "chla") %>% 
+  unite(parameter, c("layer", "parameter"), remove = FALSE) %>% 
+  bind_rows(wq.df)
+```
+
+Create a function to consistently aggregate and find the mean of the `measurevalue`. This function:
+1. Groups by all columns but `measurevalue` and `samplereplicatedtype`
+2. Aggregates by the grouped columns and finds the mean value of `measurevalue`
+3. Groups by all columns but `measurevalue` and `layer`
+4. Aggregates by the grouped columns and finds the mean value of `measurevalue`
+5. Groups by all columns but `measurevalue` and `depth`
+6. Aggregates by the grouped columns and finds the mean value of `measurevalue`
+```{r}
+avg_wq <- function(x) {
+  final.df <- x %>% 
+    group_by_at(vars(-measurevalue, -samplereplicatetype)) %>% 
+    summarize(measurevalue = mean(measurevalue, na.rm = TRUE)) %>% 
+    group_by_at(vars(-measurevalue, -layer)) %>%
+    summarize(measurevalue = mean(measurevalue, na.rm = TRUE)) %>%
+    group_by_at(vars(-measurevalue, -depth)) %>% 
+    summarize(measurevalue = mean(measurevalue, na.rm = TRUE)) %>% 
+    ungroup()
+}
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+# If the upper pycnocline depth is specified, then the mean for each parameter (i.e. salinity, chlorophyll a, pheophytin, DOC) is found using samples specified as above the pycnocline ("ap") and surface ("s") Buchanan et al. [-@BuchananPhytoplanktonreferencecommunities2005, p. 139]. If the upper pycnocline depth is not specified, then the mean for each parameter (i.e. salinity, chlorophyll a, pheophytin, DOC) is found using samples from the entire water column Buchanan et al. [-@BuchananPhytoplanktonreferencecommunities2005, p. 139]. Finally, join the two data frames back together to re-create `wq.df`.
+pdepth.df <- events.df %>% 
+  mutate(sampledate = as.Date(sampledate)) %>% 
+  select(station, sampledate, pdepth) %>% 
+  dplyr::distinct()
+
+wq.df <- left_join(wq.df, pdepth.df, by = c("station", "sampledate"))
+abp.df <- wq.df %>% 
+  filter(pycnocline == TRUE,
+         # source != "vims",
+         depth <= upperpycnocline
+         # depth <= pdepth
+         ) %>% 
+  avg_wq()
+
+vims.df <- wq.df %>% 
+  filter(pycnocline == TRUE,
+         source == "vims",
+         depth <= lowerpycnocline) %>% 
+  avg_wq()
+
+wc.df <- wq.df %>% 
+  filter(pycnocline == FALSE) %>% 
+  avg_wq()
+
+wq.df <- bind_rows(abp.df,
+                   # vims.df,
+                   wc.df) %>% 
+  rename(date = sampledate)
+```
+
+The pychnocline depth (`pdepth`) is extracted from the the event data (`events.df`) and joined with the water quality data (`wq.df`). Only rows with a `depth` above or equal to the `pdepth` are retained. The `avg_wq()` function created above is used to find the average water quality value.
+```{r}
+pdepth.df <- events.df %>% 
+  filter(layer %in% c("ap", "wc")) %>% 
+  mutate(sampledate = as.Date(sampledate)) %>% 
+  select(station, sampledate, pdepth) %>% 
+  dplyr::distinct()
+
+wq.df <- left_join(wq.df, pdepth.df, by = c("station", "sampledate"))
+wq.df2 <- wq.df %>% 
+  filter(depth <= pdepth) %>% 
+  avg_wq() %>% 
+  rename(date = sampledate)
+```
+
+
+### 3-Day Window
+
+In some case the water quality data was not collected on the same day as the phytoplankton data. To obtain more phytoplankton sampling events with associated water quality data, Lacouture et al. [-@LacouturePhytoplanktonindexbiotic2006] used water quality data collected within ± 3 days of the phytoplankton.
+
+`bay.df` is subset to only represent unique combinations of `station` and `sampledate`.
+```{r}
+bay.sub <- bay.df %>% 
+  select(station, sampledate) %>% 
+  distinct() %>% 
+  mutate(lower_date = sampledate - lubridate::days(3),
+         upper_date = sampledate + lubridate::days(3))
+```
+
+The process to identify water quality dates within the ± 3 day window of the phytoplankton sampling date can be lengthy. The `parallel` package is used again to speed up the process.
+```{r message=FALSE}
+library(parallel)
+n.cores <- detectCores() - 1
+cl <- makeCluster(n.cores)
+clusterExport(cl = cl, varlist = c("wq.df", "bay.sub"))
+clusterEvalQ(cl, c(library(dplyr))) %>% invisible()
+```
+
+For each station and sample date combination (each row) in `bay.sub`, all of the `wq.df` samples, from the same station, within a ± 3 day window are found. If there are multiple `wq.df` samples within the ± 3 day window, then the sample collected closest to the phytoplankton data is retained. There is a possibility that water quality samples could be collected at equal intervals before and after phytoplankton sampling. For example, water quality samples could have been collected one day before and one day after phytoplankton sampling. In those instances the sample collected prior to the phytoplankton sampling is retained.
+```{r}
+env.df <- parLapply(cl, 1:nrow(bay.sub), function(row.i) {
+
+  sub.df <- slice(bay.sub, row.i)
+  #----------------------------------------------------------------------------
+  sub.env <- wq.df %>% 
+    filter(station == sub.df$station,
+           date >= sub.df$lower_date,
+           date <= sub.df$upper_date)
+  #----------------------------------------------------------------------------
+  if (nrow(sub.env) == 0) return(data.frame(
+    station = NA,
+    date = NA,
+    parameter = NA,
+    measurevalue = NA
+  ))
+  #----------------------------------------------------------------------------
+  final.df <- sub.env %>% 
+    mutate(date_diff = date - sub.df$sampledate,
+           abs_date_diff = abs(date_diff),
+           sampledate = sub.df$sampledate) %>% 
+    filter(abs_date_diff == min(abs_date_diff))
+  #----------------------------------------------------------------------------
+  if (nrow(final.df) > 1) {
+    final.df <- final.df %>% 
+      filter(date == min(date))
+  }
+  #----------------------------------------------------------------------------
+  return(final.df)
+}) %>% 
+  bind_rows() %>% 
+  filter(!is.na(station))
+
+stopCluster(cl)
+#closeAllConnections()
+```
+
+The water quality data is transformed from a long data format to a wide data format.
+```{r}
+env.wide <- env.df %>% 
+  spread(parameter, measurevalue)
+```
+
+`s_shla` and `pheo` are given more descriptive names, `surface_chla` and `pheophytin`, respectively. Additionally, the script ensures that `surface_chla`, `pheophytin`, and `doc` are all numeric values. Finally, the columns are subset to prepare to join with `bay.df`.
+```{r}
+env.wide <- env.wide %>% 
+  mutate_at(vars(salinity, s_chla, chla, pheo, doc), as.numeric) %>% 
+  rename(surface_chla = s_chla,
+         pheophytin = pheo) %>% 
+  select(station, sampledate, pycnocline, salinity, surface_chla, chla, pheophytin, doc)
+```
+
+Join `bay.df` with `env.wide` to combine phytoplankton count data with water quality data.
+```{r}
+bay.df <- left_join(bay.df, env.wide, by = c("station", "sampledate"))
+```
+
+### Salinity Zones
+
+Some of the salinity zones (`salzone`) found in CEDR are reported by the data provider and differ from the salinity zones in Lacouture et al.  [-@LacouturePhytoplanktonindexbiotic2006]. When possible the salinity zones are reassigned below using salinity values from CEDR.
+
+#### CEDR Salinity Zones
+
+Salinity zones from CEDR are converted to one of four categories: "f" (freshwater), "m" (mesohaline), "o" (oligohaline), and "p" (polyhaline). Salinity zones (`salzone`) provide by CEDR may not be appropriate for the PIBI.
+```{r}
+events.df <- events.df %>% 
+  mutate(sampledate = as.Date(sampledate),
+         salzone = case_when(
+           salzone %in% c("tf", "fe") ~ "f",
+           salzone %in% c("m", "me") ~ "m",
+           salzone %in% c("o", "oe") ~ "o",
+           salzone %in% c("p", "pe") ~ "p",
+           TRUE ~ as.character(NA)
+         ))
+```
+
+Retain only unique information regarding the data provider (`source`), station name (`station`), sample date (`sampledate`), and salinity zone (`salzone`).
+```{r}
+events.sub <- events.df %>% 
+  select(source, station, sampledate, salzone) %>% 
+  distinct() %>% 
+  rename(salzone_cedr = salzone)
+```
+
+Import the salinity zone used by Jacqueline M. Johnson of the Chesapeake Bay Program. This will provide a check of salinity zone classification from 10 years ago to the salinity zone classification in CEDR.
+```{r}
+old.salzone <- readxl::read_excel(file.path(project.dir, "data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx"),
+                         sheet = "DATA_4+biometrics",
+                         skip = 1) %>% 
+  clean_up() %>% 
+  select(station, sample_date, ibi_salzone) %>% 
+  mutate(sample_date = as.Date(sample_date)) %>% 
+  rename(salzone_johnson = ibi_salzone,
+         sampledate = sample_date) %>% 
+  distinct()
+```
+
+Append the salinity zone defined by Jacqueline M. Johnson (`salzone_johnson`) to `wq.df`.
+```{r}
+events.sub <- inner_join(events.sub, old.salzone, by = c("station", "sampledate"))
+```
+
+Identify rows where the salinity zone specified in CEDR (`salzone_cedr`) differs from the salinity zone specified by Jacqueline M. Johnson (`salzone_johnson`).
+```{r}
+events.sub <- events.sub %>% 
+  mutate(salzone_disagree = if_else(salzone_cedr != salzone_johnson, TRUE, FALSE))
+```
+
+Summarize and plot the differences in specified salinity zones.
+```{r, fig.width=10}
+salzone.diff <- events.sub %>% 
+  select(station, sampledate, source, salzone_cedr, salzone_johnson, salzone_disagree) %>% 
+  unite(sal_group, salzone_cedr, salzone_johnson) %>% 
+  distinct() %>% 
+  filter(salzone_disagree == TRUE) %>% 
+  group_by(sal_group) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  arrange(count) %>% 
+  mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
+  ggplot(aes(sal_group, count, fill = count)) + 
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_bar(stat = "identity") +
+  xlab("Salinity Zone Disagreement") +
+  ylab("Number of Disagreements")
+salzone.diff
+```
+
+Join `bay.df` and `events.sub` to combine phytoplankton count data with event data.
+```{r}
+bay.df <- left_join(bay.df, events.sub, by = c("source", "station",
+                                               "sampledate"))
+```
+
+#### Classify Salinity Zones with Salinity Values
+
+Salinity zones (`salzone`) provide by CEDR may not be accurate. For the PIBI, salinity zones need to be defined by average, depth-integrated salinity from actual measurements in the surface ("S") and above-pycnocline ("AP") layers. In some cases, salinity was not measured by field crews. Where possible, these gaps in the salinity measurements were filled with educated guesses of the appropriate salinity zone category. The logic below invokes the Venice salinity classification system as described in Lacouture et al.  [-@LacouturePhytoplanktonindexbiotic2006, p. 139].
+```{r}
+bay.df <- bay.df %>% 
+  mutate(salzone_calc = case_when(
+    salinity <= 0.5 ~ "f",
+    salinity <= 5.0 ~ "o",
+    salinity <= 18.0 ~ "m",
+    salinity > 18.0 ~ "p",
+    TRUE ~ as.character(NA)
+  ))
+```
+
+Identify rows where the salinity zone specified in this document (`salzone_calc`) differs from the salinity zone specified by Jacqueline M. Johnson (`salzone_johnson`).
+```{r}
+bay.sub <- bay.df %>% 
+  mutate(salzone_disagree = if_else(salzone_calc != salzone_johnson, TRUE, FALSE))
+```
+
+Summarize and plot the differences in specified salinity zones.
+```{r, fig.width=10}
+salzone.diff <- bay.sub %>% 
+  select(station, sampledate, source, salzone_calc, salzone_johnson, salzone_disagree) %>% 
+  unite(sal_group, salzone_calc, salzone_johnson) %>% 
+  distinct() %>% 
+  filter(salzone_disagree == TRUE) %>% 
+  group_by(sal_group) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  arrange(count) %>% 
+  mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
+  ggplot(aes(sal_group, count, fill = count)) + 
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_bar(stat = "identity") +
+  xlab("Salinity Zone Disagreement") +
+  ylab("Number of Disagreements")
+salzone.diff
+```
+
+```{r, eval=FALSE, echo=FALSE}
+# To be consistent with the data used to develop the PIBI, salinity zones specified by Jacqueline M. Johnson (`salzone_johnson`) were favored when salinity zones differed. If Jacqueline M. Johnson did not provide a salinity zone (`salzone_johnson`) for a sample, then the salinity zones calculated in this document were favored. If neither Jacqueline M. Johnson or this document reported a salinity zone, then the salinity zones reported in CEDR were used.
+bay.df <- bay.df %>% 
+  mutate(salzone = case_when(
+    !is.na(salzone_johnson) ~ salzone_johnson,
+    is.na(salzone_johnson) & !is.na(salzone_calc) ~ salzone_calc,
+    is.na(salzone_johnson) & is.na(salzone_calc) ~ salzone_cedr,
+    TRUE ~ "ERROR"
+  )) %>% 
+  mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
+```
+
+Identify rows where the salinity zone specified in this document (`salzone_calc`) differs from the salinity zone specified in CEDR (`salzone_cedr`).
+```{r}
+bay.sub <- bay.df %>% 
+  mutate(salzone_disagree = if_else(salzone_calc != salzone_cedr, TRUE, FALSE))
+```
+
+Summarize and plot the differences in specified salinity zones.
+```{r, fig.width=10}
+salzone.diff <- bay.sub %>% 
+  select(station, sampledate, source, salzone_calc, salzone_cedr, salzone_disagree) %>% 
+  unite(sal_group, salzone_calc, salzone_cedr) %>% 
+  distinct() %>% 
+  filter(salzone_disagree == TRUE) %>% 
+  group_by(sal_group) %>% 
+  summarize(count = n()) %>% 
+  ungroup() %>% 
+  arrange(count) %>% 
+  mutate(sal_group = factor(sal_group, levels = unique(sal_group))) %>% 
+  ggplot(aes(sal_group, count, fill = count)) + 
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  geom_bar(stat = "identity") +
+  xlab("Salinity Zone Disagreement") +
+  ylab("Number of Disagreements")
+salzone.diff
+```
+
+Salinity zone classifications made in this document (`salzone_calc`) were favored but salinity zones found in CEDR were used in the absence of `salzone_calc` values.
+```{r}
+bay.df <- bay.df %>% 
+  mutate(salzone = case_when(
+    !is.na(salzone_calc) ~ salzone_calc,
+    is.na(salzone_calc) ~ salzone_cedr,
+    is.na(salzone_calc) & is.na(salzone_cedr) ~ as.character(NA),
+    TRUE ~ "ERROR"
+  )) %>% 
+  mutate(unique_id = paste(unique_id, season, salzone, sep = "_"))
+```
+
+The following interactive map provides a quick visual assessment of the assigned salinity zones (`salzone`). For this to be useful you will need to zoom into each station to see all of the assigned salinity zones. The points have been randomly jittered to prevent them from plotting directly on top of one another.
+```{r}
+points.df <- bay.df %>% 
+  dplyr::select(unique_id, station, salzone) %>% 
+  distinct() %>% 
+  left_join(stations.df, by = c("station")) %>% 
+  dplyr::select(unique_id, station, source, latitude, longitude, salzone) %>% 
+  distinct() %>% 
+  mutate(#longitude = if_else(is.na(salzone), longitude + 0.01, longitude),
+         #latitude = if_else(is.na(salzone), latitude + 0.01, latitude),
+         longitude = jitter(longitude, amount = 0.005),
+         latitude = jitter(latitude, amount = 0.005),
+         salzone = if_else(is.na(salzone), "missing", salzone), 
+         salzone = factor(salzone, c("f", "o", "m", "p", "missing"))) %>% 
+  arrange(desc(salzone))
+
+factpal <- colorFactor(c("#440154FF", "#31688EFF",
+                         "#35B779FF", "#FDE725FF",
+                         "#808080"), points.df$salzone)
+
+leaflet(points.df) %>% 
+    addProviderTiles(providers$CartoDB.Positron,
+                   options = leaflet::tileOptions(minZoom = 7, maxZoom = 18)) %>% 
+  addCircleMarkers( ~longitude, ~latitude,
+                    color = ~factpal(salzone),
+                    stroke = FALSE,
+                    fillOpacity = 0.5,
+                    popup = paste("Unique ID:", points.df$unique_id, "<br/>",
+                                  "Station:", points.df$station, "<br/>",
+                                  "Source:", points.df$source, "<br/>",
+                                  "Latitude:", points.df$latitude, "<br/>",
+                                  "Longitude:", points.df$longitude, "<br/>",
+                                  "Salinity Zone:", points.df$salzone)) %>% 
+   leaflet::setMaxBounds(lng1 = -78, lat1 = 36, lng2 = -75, lat2 = 40.5) %>% 
+  leaflet::setView(-76.4, lat = 38, zoom = 7) 
+```
+
+Remove objects that are no longer necessary.
+```{r}
+# rm(env.df, env.wide, wq.df, bay.sub)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+jj.df <- readxl::read_excel(file.path(project.dir, "data/jackie_data/Data 2013_4plus-phyto-metrics.xlsx"),
+                                  sheet = "DATA_4+biometrics",
+                                  skip = 1) %>% 
+  clean_up() %>%
+  select(station, sample_date, salinity, contains("salzone")) %>% 
+  mutate(sample_date = as.Date(sample_date)) %>% 
+  rename(date = sample_date,
+         salinity_johnson = salinity,
+         salzone_johnson = ibi_salzone#,
+         # salzone_jj = salzone
+         ) %>% 
+  select(-salzone)
+  # mutate(salzone_test = case_when(
+  #   salinity_johnson <= 0.5 ~ "f",
+  #   salinity_johnson <= 5.0 ~ "o",
+  #   salinity_johnson <= 18.0 ~ "m",
+  #   salinity_johnson > 18.0 ~ "p",
+  #   TRUE ~ as.character(NA)
+  # )) %>% 
+  # mutate(diff = if_else(salzone_johnson != salzone_test, TRUE, FALSE))
+
+test.df <- bay.df %>% 
+  select(station, sampledate, layer, salinity, salzone_cedr, salzone_calc) %>% 
+  distinct() %>% 
+  rename(date = sampledate) %>% 
+  inner_join(jj.df, by = c("station", "date")) %>% 
+  mutate(sal_diff = salinity - salinity_johnson,
+         salzone_diff = if_else(salzone_calc != salzone_johnson, TRUE, FALSE)) %>% 
+  arrange(desc(salzone_diff), desc(abs(sal_diff))) %>% 
+  select(station, date, layer, salzone_cedr, salzone_calc,
+         salzone_johnson, salzone_diff,
+         salinity, salinity_johnson, sal_diff)
+
+data.table::fwrite(test.df, "data/salzones_8_21_18.csv")
+```
+
+

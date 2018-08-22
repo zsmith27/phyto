@@ -69,7 +69,7 @@ run.itis.acquisition <- FALSE
 
 ```
 
-## Ratings
+### Rating Exploration
 ```{r child = 'sections/map_ratings.Rmd', eval=TRUE}
 
 ```

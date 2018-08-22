@@ -18,20 +18,6 @@ file.path(extracted.path, extracted.file))
 extract_code(sections.path, extracted.path)
 extract_code(appendix.path, extracted.path)
 
-source.vec <- c(
-"intro.R",
-"prep_hierarchy.R",
-"prep_carbon.R",
-"prep_events.R",
-# "prep_station.R",
-"prep_wq.R",
-"metric_calc.R",
-"scores_ratings.R",
-"map_ratings.R",
-"validation_old_values.R",
-"validation_scoring_disagreement.R",
-"validation_metric_disagreement.R"
-)
 
 # Run ---------------------------------------------------------------------
 evaluate <- TRUE
@@ -41,9 +27,9 @@ source.vec <- c(
 "intro.R",
 "prep_hierarchy.R",
 "prep_carbon.R",
-"prep_events.R"#,
+"prep_events.R",
 # "prep_station.R",
-# "prep_wq.R",
+ "prep_wq.R"#,
 # "metric_calc.R",
 # "scores_ratings.R",
 # "map_ratings.R",
